@@ -64,7 +64,7 @@ public class GroupHeaderSheetReader : ISheetReader
         bool defaultConverter = converter is Converters.DefaultCellValueConverter;
         int maxCol = parsed.Count == 0 ? 0 : parsed.Keys.Max();
         var propertyTypes = new Type[maxCol + 1];
-        Action<object, object?>[]? setters = defaultAccessor ? new Action<object, object?>[maxCol + 1] : null;
+        Action<object, object?>?[]? setters = defaultAccessor ? new Action<object, object?>?[maxCol + 1] : null;
         foreach (var kv in parsed)
         {
             if (expectedLookup.TryGetValue(kv.Value.Trim(), out var col))
@@ -113,7 +113,16 @@ public class GroupHeaderSheetReader : ISheetReader
                         continue; // 只读/不存在属性列：不参与写入
                     }
                     ICell? cell = row.GetCell(kv.Key);
-                    var value = converter.ReadCell(cell, propertyTypes[kv.Key]);
+                    object? value;
+                    if (col.ValueMap != null)
+                    {
+                        // 值映射列：先按原始文本读，再反查为实体代码值（避免先转类型丢失显示文本）
+                        value = Converters.ValueMapper.ResolveValue(col, converter.ReadCell(cell, typeof(string))?.ToString(), propertyTypes[kv.Key]);
+                    }
+                    else
+                    {
+                        value = converter.ReadCell(cell, propertyTypes[kv.Key]);
+                    }
                     if (value != null && !string.IsNullOrEmpty(value.ToString()))
                     {
                         any = true;

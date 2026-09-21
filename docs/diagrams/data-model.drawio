@@ -11,7 +11,7 @@
         </mxCell>
 
         <!-- ExcelColumn 主实体 -->
-        <mxCell id="column" value="ExcelColumn（列定义 · 生成与解析共用）&#10;&#10;· Name          表头文字（导入按此定位）&#10;· Field         实体属性名&#10;· Order / Visible / IsLocked&#10;· Formula       {Field} 公式模板&#10;· GroupName / GroupText   分组表头&#10;· DropdownOptions / ValidationKind&#10;· ValidationFormula1/2   区间/公式&#10;· ZeroShowWhiteSpace / Width / Alignment&#10;· NumberFormat / WriteAsNumeric / HeaderColor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=0;align=left;spacing=6;" vertex="1" parent="1">
+        <mxCell id="column" value="ExcelColumn（列定义 · 生成与解析共用）&#10;&#10;· Name          表头文字（导入按此定位）&#10;· Field         实体属性名&#10;· Order / Visible / IsLocked&#10;· Formula       {Field} 公式模板&#10;· GroupName / GroupText   分组表头&#10;· DropdownOptions / ValidationKind&#10;· ValidationFormula1/2   区间/公式&#10;· ValueMap（unknown哨兵） 代码⇄显示&#10;· ZeroShowWhiteSpace / Width / Alignment&#10;· NumberFormat / WriteAsNumeric / HeaderColor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=0;align=left;spacing=6;" vertex="1" parent="1">
           <mxGeometry x="430" y="80" width="340" height="230" as="geometry" />
         </mxCell>
 

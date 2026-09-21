@@ -37,7 +37,7 @@ public static class Program
         int iterations = Parse(args, 2, 3);
 
         Console.WriteLine("MagicFrame.Excel 压力测试");
-        Console.WriteLine($"数据规模：{rowCount} 行 × {colCount} 列，迭代 {iterations} 次");
+        Console.WriteLine($"数据规模：{rowCount} 行 × {colCount + 1} 列（{colCount} 普通 + 1 值映射列），迭代 {iterations} 次");
         Console.WriteLine("==================================================");
         Console.WriteLine();
 
@@ -45,6 +45,21 @@ public static class Program
         var columns = Enumerable.Range(1, colCount)
             .Select(i => new ExcelColumn { Name = $"列{i:D2}", Field = $"P{i:D2}", Order = i })
             .ToList();
+
+        // 追加 1 列值映射（0/1 -> 女/男，unknown 哨兵兜底），压测映射导出/导入路径
+        columns.Add(new ExcelColumn
+        {
+            Name = "性别",
+            Field = "Gender",
+            Order = colCount + 1,
+            ValueMap = new Dictionary<object, string>
+            {
+                [0] = "女",
+                [1] = "男",
+                [MagicFrame.Excel.Converters.ValueMapper.UnknownKey] = "2",
+            },
+        });
+        int effectiveCols = columns.Count;
 
         var engine = ExcelEngine.CreateDefault();
 
@@ -162,6 +177,7 @@ public static class Program
         AssertEqual(rows[0].P01, imported[0].P01, "P01[0]");
         AssertEqual(rows[0].P11, imported[0].P11, "P11[0]");
         AssertEqual(rows[rowCount - 1].P21, imported[rowCount - 1].P21, "P21[末行]");
+        AssertEqual(rows[0].Gender, imported[0].Gender, "Gender[0]（值映射往返）");
         AssertEqual(rows[rowCount / 2].P26, imported[rowCount / 2].P26, "P26[中行]");
         AssertEqual(rows[rowCount / 3].P29, imported[rowCount / 3].P29, "P29[中行]");
 

@@ -54,8 +54,47 @@ public class AttributeColumnProvider : IColumnProvider
                 ValidationKind = att.ValidationKind,
                 ValidationFormula1 = att.ValidationFormula1 ?? "",
                 ValidationFormula2 = att.ValidationFormula2 ?? "",
+                ValueMap = ParseValueMappings(att.ValueMappings),
             });
         }
         return list.OrderBy(c => c.Order).ThenBy(c => c.Name).ToList();
+    }
+
+    /// <summary>
+    /// 解析 "0:女,1:男,unknown:2" -> {0="女",1="男", unknown="2"}。
+    /// 纯数字键按 long，其余按 string；"unknown" 为异常值哨兵键。
+    /// 未提供 unknown 时自动补 "unknown:-9999999"（异常值默认）。
+    /// </summary>
+    private static Dictionary<object, string>? ParseValueMappings(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return null;
+        }
+        var map = new Dictionary<object, string>();
+        bool hasUnknown = false;
+        foreach (var segment in text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            int colon = segment.IndexOf(':');
+            if (colon <= 0)
+            {
+                continue;
+            }
+            string key = segment[..colon].Trim();
+            string value = segment[(colon + 1)..].Trim();
+            if (string.Equals(key, Converters.ValueMapper.UnknownKey, StringComparison.OrdinalIgnoreCase))
+            {
+                map[Converters.ValueMapper.UnknownKey] = value;
+                hasUnknown = true;
+                continue;
+            }
+            object keyObj = long.TryParse(key, out long num) ? num : key;
+            map[keyObj] = value;
+        }
+        if (!hasUnknown)
+        {
+            map[Converters.ValueMapper.UnknownKey] = Converters.ValueMapper.DefaultUnknownValue.ToString();
+        }
+        return map.Count == 0 ? null : map;
     }
 }

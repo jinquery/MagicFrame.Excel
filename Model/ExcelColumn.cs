@@ -108,6 +108,17 @@ public class ExcelColumn
     public string NumberFormat { get; set; } = "";
 
     /// <summary>
+    /// 值映射：实体代码值 -> Excel 显示文本。
+    /// 导出时实体值替换为显示文本；导入时显示文本反查还原为实体值（详见 <see cref="Converters.ValueMapper"/>）。
+    /// <para>
+    /// 特殊哨兵键 <see cref="Converters.ValueMapper.UnknownKey"/>（"unknown"）用于指定"异常值"兜底代码，
+    /// 例如 <c>{ [0]="女", [1]="男", ["unknown"]="2" }</c>——导入遇到未映射文本时字段写 2；
+    /// 未提供该键时默认兜底为 <see cref="Converters.ValueMapper.DefaultUnknownValue"/>（-9999999）。
+    /// </para>
+    /// </summary>
+    public IDictionary<object, string>? ValueMap { get; set; }
+
+    /// <summary>
     /// 复制一份（避免引用共享导致的意外修改）
     /// </summary>
     public ExcelColumn Clone() => (ExcelColumn)MemberwiseClone();

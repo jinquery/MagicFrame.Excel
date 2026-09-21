@@ -110,6 +110,41 @@ public static class BasicDemo
         }
         Console.WriteLine();
 
+        // 8. 值映射（代码 <-> 显示文本）
+        Console.WriteLine("[8] 值映射（0/1/2 <-> 女/男/其他）→ value_map.xlsx");
+        var genderRows = new List<GenderRow>
+        {
+            new() { Name = "张三", Gender = 1 },
+            new() { Name = "李四", Gender = 0 },
+        };
+        var genderColumns = new[]
+        {
+            new MagicFrame.Excel.Model.ExcelColumn { Name = "姓名", Field = "Name", Order = 1 },
+            new MagicFrame.Excel.Model.ExcelColumn
+            {
+                Name = "性别", Field = "Gender", Order = 2,
+                // unknown 哨兵键指定"异常值"兜底代码（未映射文本 -> 2）；缺省为 -9999999
+                ValueMap = new Dictionary<object, string>
+                {
+                    [0] = "女",
+                    [1] = "男",
+                    [MagicFrame.Excel.Converters.ValueMapper.UnknownKey] = "2",
+                },
+            },
+        };
+        string valueMapFile = Path.Combine(outputDir, "value_map.xlsx");
+        engine.ExportToFile(genderRows, valueMapFile, new ExcelExportOptions { SheetName = "映射表", Columns = genderColumns });
+        // 人为把一格改成未映射文本，验证导入兜底为特殊值 2
+        using (var exported = engine.Export(genderRows, new ExcelExportOptions { SheetName = "映射表", Columns = genderColumns }))
+        {
+            ((NPOI.XSSF.UserModel.XSSFSheet)exported.Workbook.GetSheetAt(0)).GetRow(2).GetCell(1).SetCellValue("未知");
+            using var ms = new MemoryStream();
+            exported.Workbook.Write(ms, true);
+            var mappedBack = engine.Import<GenderRow>(ms.ToArray(), new ExcelImportOptions { SheetName = "映射表", Columns = genderColumns });
+            Console.WriteLine($"    已生成: {valueMapFile}；解析回 {mappedBack.Count} 行，Gender = [{string.Join(", ", mappedBack.Select(g => g.Gender))}]（张三=1男，李四=2其他[未映射兜底]）");
+        }
+        Console.WriteLine();
+
         Console.WriteLine("==================== 基础演示结束 ====================");
         Console.WriteLine();
     }

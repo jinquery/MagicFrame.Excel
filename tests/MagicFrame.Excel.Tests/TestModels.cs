@@ -162,6 +162,16 @@ public class ValidationRow
     public string Note { get; set; } = "";
 }
 
+/// <summary>值映射测试实体：字段存 0/1，Excel 显示 女/男；unknown:2 为异常值兜底</summary>
+public class GenderEntity
+{
+    [ExcelColumn("姓名", Order = 1)]
+    public string Name { get; set; } = "";
+
+    [ExcelColumn("性别", Order = 2, ValueMappings = "0:女,1:男,unknown:2")]
+    public int Gender { get; set; }
+}
+
 /// <summary>用于自定义表头（FixedTitle）扩展测试的实体</summary>
 public class TitleItem
 {

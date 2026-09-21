@@ -66,3 +66,10 @@ public class ManualRow
     public string Name { get; set; } = "";
     public decimal Amount { get; set; }
 }
+
+/// <summary>值映射演示实体：字段存代码，Excel 显示文本</summary>
+public class GenderRow
+{
+    public string Name { get; set; } = "";
+    public int Gender { get; set; }
+}

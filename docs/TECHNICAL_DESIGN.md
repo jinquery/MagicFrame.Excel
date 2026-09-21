@@ -50,7 +50,7 @@
 | 语言版本 | `C# 10`（`ImplicitUsings`、`Nullable` 开启） |
 | 依赖 | `NPOI 2.7.2` |
 | 文件格式 | **仅 `.xlsx`（XSSF / OpenXML）**，引擎内部固定使用 `XSSFWorkbook` |
-| 测试 | `xUnit`（`tests/MagicFrame.Excel.Tests`，62 个用例） |
+| 测试 | `xUnit`（`tests/MagicFrame.Excel.Tests`，70 个用例） |
 | 演示 | `demos/MagicFrame.Excel.Demo`（控制台） |
 
 ---
@@ -75,7 +75,7 @@ MagicFrame.Excel/
 ├── Providers/             # 默认列提供器（特性发现 + 按类型缓存）
 ├── Readers/               # 读取策略（单/分组表头）+ 注册表 + 列对应校验 + 快路径写入
 ├── Writers/               # 写入策略（单/分组表头）+ 注册表 + 样式集合
-├── tests/MagicFrame.Excel.Tests/   # xUnit 测试（62 个用例）
+├── tests/MagicFrame.Excel.Tests/   # xUnit 测试（70 个用例）
 ├── demos/MagicFrame.Excel.Demo/     # 控制台演示
 ├── tools/MagicFrame.Excel.StressTest/  # 独立压力测试（5000×30 计时、公式对比）
 ├── docs/                  # 技术设计文档 + drawio 图表
@@ -141,6 +141,7 @@ ResolveColumns(T) ──► 新建 XSSFWorkbook ──► 按 HeaderKind 取写�
 | `Alignment` | CellAlignment | 水平对齐 |
 | `WriteAsNumeric` | bool | 是否按数值写入（false 统一按文本） |
 | `NumberFormat` | string | 数字格式掩码，如 `"0.00%"` / `"#,##0.00"` |
+| `ValueMap` | IDictionary\<object,string\> | 值映射：实体代码值 → 显示文本（导出替换、导入反查）；`"unknown"` 哨兵键指定异常值兜底代码 |
 | `Clone()` | ExcelColumn | 深拷贝（避免引用共享） |
 
 ### 4.2 ExcelColumnAttribute（特性版）
@@ -149,7 +150,7 @@ ResolveColumns(T) ──► 新建 XSSFWorkbook ──► 按 HeaderKind 取写�
 
 - `Order` 为 0 时仍按 `Order` 再按 `Name` 排序（`AttributeColumnProvider` 的排序逻辑）。
 - `Width` 为 `int`，**0 表示自适应**（特性参数不允许可空值类型，故不使用 `int?`）。
-- `DropdownOptions` 为 `string[]`；`ValidationFormula1/2` 为 string；`ValidationKind` / `NumberFormat` 可直接在特性中声明。
+- `DropdownOptions` 为 `string[]`；`ValidationFormula1/2` 为 string；`ValidationKind` / `NumberFormat` / `ValueMappings`（如 `"0:女,1:男,unknown:2"`）可直接在特性中声明。
 - 特性继承自 `Attribute`，可设 `Field` 显式指定实体属性名（默认取属性名）。
 
 ### 4.3 HeaderKinds（表头类型常量）
@@ -353,6 +354,7 @@ IDictionary<string, IList<Employee>> all = engine.ImportAll<Employee>(bytes);
 | 冻结列 | `ExcelExportOptions.FreezeColumns` | 冻结前 N 列，可与 FreezeHeader 叠加 |
 | 数字格式 | `ExcelColumn.NumberFormat` | 如 `"0.00%"`、`"#,##0.00"` |
 | 数据验证增强 | `ExcelColumn.ValidationKind` + `ValidationFormula1/2` | 整数/小数/日期区间、自定义公式、公式列表 |
+| **值映射** | `ExcelColumn.ValueMap`（`"unknown"` 哨兵键 / 特性 `ValueMappings`） | 实体代码值 ⇄ 显示文本（如 0→女、1→男），导入未映射文本回退异常值 |
 | 空密码保护 | `SheetProtectionOptions.ProtectWithoutPassword` | 保护但不设密码（Password 置空 + 该开关） |
 | 逐行错误收集 | `ExcelImportOptions.CollectRowErrors` | 某行解析失败记录到 `Issues` 并跳过，不整批抛 |
 | 源行号回填 | `ExcelImportOptions.SourceRowProperty` | 把 Excel 行号写回实体属性 |
@@ -360,6 +362,38 @@ IDictionary<string, IList<Employee>> all = engine.ImportAll<Employee>(bytes);
 | 样式扩展 | `RowHeight` / `AlternateRowFillColor` / `EnableBorders` | 行高 / 交替行色 / 边框 |
 | 结构化问题 | `ExcelImportOptions.Issues` | `ImportIssue`（Severity/Code/Message/Row） |
 | 一键多 Sheet 导入 | `ExcelEngine.ImportAll<T>` | 返回 `Dictionary<sheetName, IList<T>>` |
+
+### 5.9 值映射（代码 ⇄ 显示文本）
+
+场景：实体存 0/1，Excel 显示 女/男；导入时 男 → 1、女 → 0；未映射文本回退到"异常值"。
+
+**程序化**：
+```csharp
+new ExcelColumn
+{
+    Name = "性别",
+    Field = "Gender",
+    ValueMap = new Dictionary<object, string>
+    {
+        [0] = "女",
+        [1] = "男",
+        [ValueMapper.UnknownKey] = "2",   // "unknown" 哨兵键：导入未映射文本时字段写 2
+    },
+}
+```
+
+**特性**：
+```csharp
+// "unknown:2" 指定异常值兜底代码；若不写，自动补 unknown:-9999999
+[ExcelColumn("性别", Order = 2, ValueMappings = "0:女,1:男,unknown:2")]
+public int Gender { get; set; }
+```
+
+**行为**：
+- 导出：实体值 1 → 单元格写 `男`；0 → `女`；不在映射中的值按原值写入。
+- 导入：`男` → 1、`女` → 0；未映射的**非空**文本 → 异常值兜底（取 `unknown` 哨兵键代码，**未提供则默认 `-9999999`**）；空单元格按目标默认值（不视为异常）。
+- 特性 `ValueMappings` 中纯数字键按整数解析；也支持单元格里直接填代码值（如数字 `0`）时按原代码还原。
+- 程序化 `ValueMap` 未含 `unknown` 键时，兜底同样默认为 `-9999999`（`ValueMapper.DefaultUnknownValue`）。
 
 ---
 
@@ -668,7 +702,7 @@ var back = engine.ImportFile<MyRow>("out.xlsx",
 # 还原 + 构建整个解决方案
 dotnet build MagicFrame.Excel.sln
 
-# 运行测试（62 个用例）
+# 运行测试（70 个用例）
 dotnet test MagicFrame.Excel.sln
 
 # 运行演示（输出到 bin/.../output/，可传第二个参数指定输出目录）
@@ -756,7 +790,8 @@ SheetProtectionOptions { Enabled, Password, ProtectWithoutPassword,
                          AllowInsertRows, AllowDeleteRows, AllowFormat, AllowSort, AllowAutoFilter }
 ExcelColumn / [ExcelColumn]  { Name, Field, Order, Visible, IsLocked, Formula, ZeroShowWhiteSpace,
                                HeaderColor, GroupName, GroupText, DropdownOptions, ValidationKind,
-                               ValidationFormula1/2, Width, Alignment, WriteAsNumeric, NumberFormat }
+                               ValidationFormula1/2, Width, Alignment, WriteAsNumeric, NumberFormat,
+                               ValueMap（含 unknown 哨兵键）, ValueMappings }
 ValidationKind   { None, List, Integer, Decimal, Date, CustomFormula, FormulaList }
 ImportIssue      { Severity(Info|Warning|Error), Code, Message, RowNumber }
 HeaderKinds          { Single, Group }

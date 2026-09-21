@@ -49,6 +49,9 @@ public class StressRow
     /// <summary>公式列（压测公式求值用，正常模式不参与）</summary>
     public decimal Total { get; set; }
 
+    /// <summary>值映射列（压测映射导出/导入用，0/1 -> 女/男）</summary>
+    public int Gender { get; set; }
+
     /// <summary>按行号生成一行确定性数据</summary>
     public static StressRow Create(int i)
     {
@@ -89,6 +92,8 @@ public class StressRow
 
             P29 = i % 2 == 0,
             P30 = i % 3 == 0,
+
+            Gender = i % 2,
         };
     }
 }

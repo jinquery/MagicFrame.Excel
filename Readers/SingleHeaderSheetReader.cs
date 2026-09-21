@@ -83,7 +83,7 @@ public class SingleHeaderSheetReader : ISheetReader
         bool defaultConverter = converter is Converters.DefaultCellValueConverter;
         int maxCol = colIndexMap.Count == 0 ? 0 : colIndexMap.Keys.Max();
         var propertyTypes = new Type[maxCol + 1];
-        Action<object, object?>[]? setters = defaultAccessor ? new Action<object, object?>[maxCol + 1] : null;
+        Action<object, object?>?[]? setters = defaultAccessor ? new Action<object, object?>?[maxCol + 1] : null;
         foreach (var kv in colIndexMap)
         {
             propertyTypes[kv.Key] = Accessors.ReflectionEntityAccessor.GetPropertyType(entityType, kv.Value.Field);
@@ -121,7 +121,16 @@ public class SingleHeaderSheetReader : ISheetReader
                 foreach (var kv in colIndexMap)
                 {
                     ICell? cell = row.GetCell(kv.Key);
-                    var value = converter.ReadCell(cell, propertyTypes[kv.Key]);
+                    object? value;
+                    if (kv.Value.ValueMap != null)
+                    {
+                        // 值映射列：先按原始文本读，再反查为实体代码值（避免先转类型丢失显示文本）
+                        value = Converters.ValueMapper.ResolveValue(kv.Value, converter.ReadCell(cell, typeof(string))?.ToString(), propertyTypes[kv.Key]);
+                    }
+                    else
+                    {
+                        value = converter.ReadCell(cell, propertyTypes[kv.Key]);
+                    }
                     if (IsMeaningful(value))
                     {
                         any = true;

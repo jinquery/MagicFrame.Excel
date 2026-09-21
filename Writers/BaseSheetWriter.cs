@@ -1,5 +1,6 @@
 using System.Text;
 using MagicFrame.Excel.Abstractions;
+using MagicFrame.Excel.Converters;
 using MagicFrame.Excel.Model;
 using MagicFrame.Excel.Options;
 using MagicFrame.Excel.Protection;
@@ -145,9 +146,9 @@ public abstract class BaseSheetWriter : ISheetWriter
         int r = 0;
         foreach (var row in rows)
         {
-            if (rowType != row?.GetType())
+            if (rowType != row.GetType())
             {
-                rowType = row?.GetType();
+                rowType = row.GetType();
                 if (defaultAccessor && rowType != null)
                 {
                     getters = new Func<object, object?>[colCount];
@@ -234,6 +235,12 @@ public abstract class BaseSheetWriter : ISheetWriter
         if (value == null)
         {
             cell.SetCellValue("");
+            return;
+        }
+        // 值映射：实体代码值 -> 显示文本（如 0 -> 女 / 1 -> 男）
+        if (ValueMapper.TryGetDisplayText(col, value, out string? displayText))
+        {
+            cell.SetCellValue(displayText);
             return;
         }
         if (col.WriteAsNumeric && converter.IsNumeric(value))

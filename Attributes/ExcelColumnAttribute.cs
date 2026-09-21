@@ -64,6 +64,14 @@ public class ExcelColumnAttribute : Attribute
     /// <summary>数字格式掩码，如 "0.00%" / "#,##0.00"；为空用默认</summary>
     public string NumberFormat { get; set; } = "";
 
+    /// <summary>
+    /// 值映射字符串，格式 "实体值:显示文本"，逗号分隔，如 "0:女,1:男,unknown:2"。
+    /// 纯数字键按整数解析，其余按字符串；
+    /// 特殊键 <c>unknown</c> 指定"异常值"兜底代码（导入未映射文本时使用），
+    /// 未提供时默认加上 <c>unknown:-9999999</c> 表示异常值。
+    /// </summary>
+    public string? ValueMappings { get; set; }
+
     public ExcelColumnAttribute(string name)
     {
         Name = name;
