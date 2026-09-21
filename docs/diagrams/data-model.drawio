@@ -1,0 +1,69 @@
+<mxfile host="app.diagrams.net" agent="MagicFrame.Excel" version="23.1.5">
+  <diagram id="data-model" name="核心数据模型">
+    <mxGraphModel dx="1000" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- 标题 -->
+        <mxCell id="title" value="核心数据模型 —— ExcelColumn 是「单一事实来源」" style="text;html=1;whiteSpace=wrap;fontSize=16;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="350" y="10" width="500" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- ExcelColumn 主实体 -->
+        <mxCell id="column" value="ExcelColumn（列定义 · 生成与解析共用）&#10;&#10;· Name          表头文字（导入按此定位）&#10;· Field         实体属性名&#10;· Order / Visible / IsLocked&#10;· Formula       {Field} 公式模板&#10;· GroupName / GroupText   分组表头&#10;· DropdownOptions / ValidationKind&#10;· ValidationFormula1/2   区间/公式&#10;· ZeroShowWhiteSpace / Width / Alignment&#10;· NumberFormat / WriteAsNumeric / HeaderColor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=0;align=left;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="430" y="80" width="340" height="230" as="geometry" />
+        </mxCell>
+
+        <!-- 特性 -->
+        <mxCell id="attr" value="ExcelColumnAttribute（声明在实体属性上）&#10;&#10;[ExcelColumn(&quot;姓名&quot;, Order=1, IsLocked=true,&#10;             Formula=&quot;{Qty}*{Price}&quot;, ...)]&#10;&#10;由 AttributeColumnProvider 反射读取&#10;（Width=0 表示自适应）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;align=left;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="140" width="300" height="160" as="geometry" />
+        </mxCell>
+
+        <!-- 选项类 -->
+        <mxCell id="exp-opts" value="ExcelExportOptions&#10;· SheetName / HeaderKind / Columns&#10;· Protection / FreezeHeader / FreezeColumns&#10;· AutoFilter / RowHeight / EnableBorders&#10;· AlternateRowFillColor / Progress&#10;· ValidationMaxRow / MaxColumnWidth&#10;· CalculateFormulasOnExport" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="360" width="280" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="imp-opts" value="ExcelImportOptions&#10;· SheetName / SheetIndex / HeaderKind&#10;· DataStartRowIndex / SkipEmptyRows&#10;· ThrowOnMissing / ThrowOnUnexpected&#10;· IgnoreReadOnly / CollectRowErrors&#10;· SourceRowProperty / Progress&#10;· Columns / Errors / Issues" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="360" y="360" width="280" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="prot-opts" value="SheetProtectionOptions&#10;· Enabled / Password / ProtectWithoutPassword&#10;· AllowInsertRows / AllowDeleteRows&#10;· AllowFormat / AllowSort / AllowAutoFilter&#10;&#10;（默认均放开：锁定列 + 可增行/排序/筛选）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;align=left;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="680" y="360" width="280" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- HeaderKinds -->
+        <mxCell id="kinds" value="HeaderKinds&#10;· Single —— 单表头（1 行）&#10;· Group  —— 分组表头（2 行）&#10;· 自定义：注册新 HeaderKind" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;align=left;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="430" y="560" width="340" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- 使用方 -->
+        <mxCell id="users" value="写入/读取策略（ISheetWriter / ISheetReader）&#10;· 写：表头、单元格样式、公式、验证、保护&#10;· 读：按 Name/分组 定位列、类型转换、写实体&#10;&#10;ExcelColumn.Clone() 复制避免共享引用" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;align=left;spacing=6;" vertex="1" parent="1">
+          <mxGeometry x="830" y="560" width="320" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- 连接线 -->
+        <mxCell id="e1" value="反射生成" edge="1" parent="1" source="attr" target="column" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="手工构建（程序化列）" edge="1" parent="1" source="exp-opts" target="column" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="导入时解析" edge="1" parent="1" source="imp-opts" target="column" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="保护设置" edge="1" parent="1" source="prot-opts" target="kinds" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="HeaderKind 选择策略" edge="1" parent="1" source="kinds" target="users" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="消费列定义" edge="1" parent="1" source="column" target="users" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="导出/导入承载" edge="1" parent="1" source="column" target="exp-opts" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

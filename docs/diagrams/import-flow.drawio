@@ -1,0 +1,108 @@
+<mxfile host="app.diagrams.net" agent="MagicFrame.Excel" version="23.1.5">
+  <diagram id="import-flow" name="导入流程">
+    <mxGraphModel dx="900" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="start" value="开始：Import&lt;T&gt;(bytes / base64 / file / stream)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="330" y="20" width="250" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="n1" value="打开 XSSFWorkbook（内存流）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="330" y="110" width="250" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="n2" value="选择 Sheet：SheetName 优先，否则 SheetIndex" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="330" y="200" width="250" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="n3" value="解析列定义 ResolveColumns" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="330" y="290" width="250" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="n4" value="按 HeaderKind 取读取策略" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="350" y="380" width="210" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="n4-single" value="SingleHeaderSheetReader&lt;br&gt;（列名定位）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="660" y="380" width="160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="n4-group" value="GroupHeaderSheetReader&lt;br&gt;（列名_分组名定位）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="660" y="460" width="160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="n5" value="校验列对应关系 ColumnValidator&lt;br&gt;缺失 · 多余 · 只读忽略 · 表头重复" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="330" y="510" width="250" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="n5-err" value="存在异常且 ThrowOn* = true&lt;br&gt;→ 抛 ExcelImportException&lt;br&gt;（其余写入 Errors）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="660" y="560" width="190" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n6" value="逐行解析（r = DataStartRowIndex..LastRowNum）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="330" y="620" width="250" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="n6a" value="定位列：表头文字 → 列索引" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#6ca8d6;" vertex="1" parent="1">
+          <mxGeometry x="60" y="720" width="220" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="n6b" value="ReadCell：类型转换 + 公式求值（求值器复用）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#6ca8d6;" vertex="1" parent="1">
+          <mxGeometry x="320" y="720" width="260" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="n6c" value="访问器写实体：表达式树编译 Setter（缓存）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#6ca8d6;" vertex="1" parent="1">
+          <mxGeometry x="620" y="720" width="260" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="n7" value="全空行？" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="350" y="820" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="n7-skip" value="SkipEmptyRows = true → 跳过该行" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="660" y="840" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="n8" value="返回 IList&lt;T&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="330" y="950" width="250" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="x1" edge="1" parent="1" source="start" target="n1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="x2" edge="1" parent="1" source="n1" target="n2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="x3" edge="1" parent="1" source="n2" target="n3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="x4" edge="1" parent="1" source="n3" target="n4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="x4a" value="Single" edge="1" parent="1" source="n4" target="n4-single" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="x4b" value="Group" edge="1" parent="1" source="n4" target="n4-group" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="x5" edge="1" parent="1" source="n4-single" target="n5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="x5b" edge="1" parent="1" source="n5" target="n5-err" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="x6" edge="1" parent="1" source="n5" target="n6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="x6a" edge="1" parent="1" source="n6" target="n6a" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="x6b" edge="1" parent="1" source="n6a" target="n6b" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="x6c" edge="1" parent="1" source="n6b" target="n6c" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="x7" edge="1" parent="1" source="n6c" target="n7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="x7a" value="是" edge="1" parent="1" source="n7" target="n7-skip" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="x8" edge="1" parent="1" source="n7" target="n8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="x8b" value="否（有数据）" edge="1" parent="1" source="n7-skip" target="n8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

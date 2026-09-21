@@ -1,0 +1,1010 @@
+<!DOCTYPE html []>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="author" content="MarkdownViewer++" />
+    <title>TECHNICAL_DESIGN.md</title>
+    <style type="text/css">
+            
+/* Avoid page breaks inside the most common attributes, especially for exports (i.e. PDF) */
+td, h1, h2, h3, h4, h5, p, ul, ol, li {
+    page-break-inside: avoid; 
+}
+
+        </style>
+  </head>
+  <body>
+    <h1 id="magicframe.excel">MagicFrame.Excel 技术设计文档</h1>
+    <blockquote>
+      <p>版本：1.0.0
+适用代码：<code>MagicFrame.Excel</code> 类库（net6.0 / NPOI 2.7.2）
+一句话定位：<strong>基于 NPOI 的通用 Excel 生成/解析类库</strong>，以「泛型集合 ⇄ Excel」为核心，内置公式、整列锁定、数据验证下拉、多级（分组）表头；整体遵循<strong>对修改关闭、对扩展开放</strong>原则。</p>
+    </blockquote>
+    <hr />
+    <h2 id="section">目录</h2>
+    <ol>
+      <li>
+        <a href="#1-%E8%AE%BE%E8%AE%A1%E7%9B%AE%E6%A0%87%E4%B8%8E%E5%8E%9F%E5%88%99">设计目标与原则</a>
+      </li>
+      <li>
+        <a href="#2-%E6%8A%80%E6%9C%AF%E6%A0%88%E4%B8%8E%E7%8E%AF%E5%A2%83">技术栈与环境</a>
+      </li>
+      <li>
+        <a href="#3-%E6%95%B4%E4%BD%93%E6%9E%B6%E6%9E%84">整体架构</a>
+      </li>
+      <li>
+        <a href="#4-%E6%A0%B8%E5%BF%83%E6%A6%82%E5%BF%B5%E6%A8%A1%E5%9E%8B">核心概念模型</a>
+      </li>
+      <li>
+        <a href="#5-%E4%BD%BF%E7%94%A8%E8%AF%B4%E6%98%8E">使用说明</a>
+      </li>
+      <li>
+        <a href="#6-%E6%89%A9%E5%B1%95%E8%AF%B4%E6%98%8E">扩展说明</a>
+      </li>
+      <li>
+        <a href="#7-%E6%89%A9%E5%B1%95%E7%9A%84%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9">扩展的注意事项</a>
+      </li>
+      <li>
+        <a href="#8-%E6%89%A9%E5%B1%95%E7%9A%84%E8%BE%B9%E7%95%8C">扩展的边界</a>
+      </li>
+      <li>
+        <a href="#9-%E6%9E%84%E5%BB%BA%E4%B8%8E%E6%B5%8B%E8%AF%95">构建与测试</a>
+      </li>
+    </ol>
+    <hr />
+    <h2 id="section-1">1. 设计目标与原则</h2>
+    <h3 id="section-2">1.1 设计目标</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>目标</th>
+          <th>说明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>泛型化</td>
+          <td>以 <code>IEnumerable&lt;T&gt;</code> 作为输入/输出，任意 POCO 均可直接导出/解析</td>
+        </tr>
+        <tr>
+          <td>声明式列配置</td>
+          <td>通过 <code>[ExcelColumn]</code> 特性声明列：列名、顺序、公式、锁定、下拉、分组、宽度等</td>
+        </tr>
+        <tr>
+          <td>整列锁定</td>
+          <td>锁定指定列，同时放开「新增行 / 删除行 / 调整格式」，贴近真实业务模板</td>
+        </tr>
+        <tr>
+          <td>公式支持</td>
+          <td>占位符式公式模板（<code>{Field}</code>），按行替换为真实单元格地址，导出时预计算</td>
+        </tr>
+        <tr>
+          <td>多级表头</td>
+          <td>内置「单表头」「分组表头」两种布局，可扩展更多布局</td>
+        </tr>
+        <tr>
+          <td>开闭原则</td>
+          <td>核心引擎固定流水线（对修改关闭），所有可定制点通过接口 + Builder 注入（对扩展开放）</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3 id="section-3">1.2 设计原则</h3>
+    <ol>
+      <li>
+        <strong>单一事实来源</strong>：<code>ExcelColumn</code> 是「列定义」的唯一数据模型。特性发现、程序化构建都收敛到它，生成与解析共用同一份定义。</li>
+      <li>
+        <strong>策略可插拔</strong>：列元数据、实体读写、值转换、公式解析、表头布局全部抽象为接口，通过 <code>ExcelEngineBuilder</code> 注册/替换。</li>
+      <li>
+        <strong>无跨调用状态</strong>：写入器内部按「每个 Workbook 独立创建样式」（<code>WriterStyles</code>），因此各策略实现可安全地作为单例复用。</li>
+      <li>
+        <strong>纯 POCO</strong>：实体无需继承任何基类、无需实现任何接口，仅需可被 <code>new()</code> 实例化（满足 <code>where T : new()</code>）。</li>
+    </ol>
+    <hr />
+    <h2 id="section-4">2. 技术栈与环境</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>项</th>
+          <th>值</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>目标框架</td>
+          <td>
+            <code>net6.0</code>
+          </td>
+        </tr>
+        <tr>
+          <td>语言版本</td>
+          <td>
+            <code>C# 10</code>（<code>ImplicitUsings</code>、<code>Nullable</code> 开启）</td>
+        </tr>
+        <tr>
+          <td>依赖</td>
+          <td>
+            <code>NPOI 2.7.2</code>
+          </td>
+        </tr>
+        <tr>
+          <td>文件格式</td>
+          <td>
+            <strong>仅 <code>.xlsx</code>（XSSF / OpenXML）</strong>，引擎内部固定使用 <code>XSSFWorkbook</code></td>
+        </tr>
+        <tr>
+          <td>测试</td>
+          <td>
+            <code>xUnit</code>（<code>tests/MagicFrame.Excel.Tests</code>，39 个用例）</td>
+        </tr>
+        <tr>
+          <td>演示</td>
+          <td>
+            <code>demos/MagicFrame.Excel.Demo</code>（控制台）</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr />
+    <h2 id="section-5">3. 整体架构</h2>
+    <h3 id="section-6">3.1 目录结构</h3>
+    <pre>
+      <code>MagicFrame.Excel/
+├── Abstractions/          # 扩展点接口（IColumnProvider / IEntityAccessor / ICellValueConverter /
+│                          #   IFormulaResolver / ISheetWriter / ISheetReader）
+├── Accessors/             # 默认实体访问器（反射）
+├── Attributes/            # [ExcelColumn] 特性
+├── Converters/            # 默认值转换器 + 类型转换工具
+├── Engine/                # 引擎门面、构建器、导出结果、多 Sheet 规格
+├── Exceptions/            # ExcelImportException
+├── Formulas/              # 默认公式解析器
+├── Model/                 # ExcelColumn / CellAlignment / HeaderKinds
+├── Options/               # 导出/导入/保护 选项
+├── Protection/            # 工作表保护器（CT_SheetProtection）
+├── Providers/             # 默认列提供器（特性发现）
+├── Readers/               # 读取策略（单表头 / 分组表头）+ 注册表
+├── Writers/               # 写入策略（单表头 / 分组表头）+ 注册表
+├── tests/MagicFrame.Excel.Tests/   # xUnit 测试
+├── demos/MagicFrame.Excel.Demo/     # 控制台演示
+└── MagicFrame.Excel.sln
+</code>
+    </pre>
+    <h3 id="section-7">3.2 核心流程（固定流水线）</h3>
+    <p>
+      <strong>导出（Export）</strong>
+    </p>
+    <pre>
+      <code>ResolveColumns(T) ──► 新建 XSSFWorkbook ──► 按 HeaderKind 取写入策略 ──► Write(sheet, ...)
+   列提供器或选项                    │                                    │
+                                     │                              ├─ 铺默认列样式（整列锁定）
+                                     │                              ├─ 写表头
+                                     │                              ├─ 写数据（公式替换/求值）
+                                     │                              ├─ 下拉验证
+                                     │                              ├─ 冻结表头
+                                     │                              └─ 工作表保护
+                                     ▼
+                         ToResult：Workbook / Bytes / Base64 / Stream
+</code>
+    </pre>
+    <p>
+      <strong>导入（Import）</strong>
+    </p>
+    <pre>
+      <code>打开 XSSFWorkbook ──► 按 SheetName 或 SheetIndex 选 Sheet ──► 按 HeaderKind 取读取策略
+        ──► Read(sheet, columns, ...) 按列名定位 → 逐行构造实体 → IList&lt;T&gt;
+</code>
+    </pre>
+    <h3 id="section-8">3.3 扩展点总览</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>扩展点</th>
+          <th>接口</th>
+          <th>默认实现</th>
+          <th>职责</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>列元数据来源</td>
+          <td>
+            <code>IColumnProvider</code>
+          </td>
+          <td>
+            <code>AttributeColumnProvider</code>
+          </td>
+          <td>由实体类型产出 <code>IReadOnlyList&lt;ExcelColumn&gt;</code></td>
+        </tr>
+        <tr>
+          <td>实体读写</td>
+          <td>
+            <code>IEntityAccessor</code>
+          </td>
+          <td>
+            <code>ReflectionEntityAccessor</code>
+          </td>
+          <td>按 <code>Field</code> 读写实体属性</td>
+        </tr>
+        <tr>
+          <td>单元格值转换</td>
+          <td>
+            <code>ICellValueConverter</code>
+          </td>
+          <td>
+            <code>DefaultCellValueConverter</code>
+          </td>
+          <td>单元格 ⇄ 实体值（含公式求值）</td>
+        </tr>
+        <tr>
+          <td>公式占位符</td>
+          <td>
+            <code>IFormulaResolver</code>
+          </td>
+          <td>
+            <code>DefaultFormulaResolver</code>
+          </td>
+          <td>将 <code>{Field}</code> 替换为单元格地址</td>
+        </tr>
+        <tr>
+          <td>表头写入</td>
+          <td>
+            <code>ISheetWriter</code>
+          </td>
+          <td>
+            <code>SingleHeaderSheetWriter</code> / <code>GroupHeaderSheetWriter</code></td>
+          <td>按布局写入一个 Sheet</td>
+        </tr>
+        <tr>
+          <td>表头读取</td>
+          <td>
+            <code>ISheetReader</code>
+          </td>
+          <td>
+            <code>SingleHeaderSheetReader</code> / <code>GroupHeaderSheetReader</code></td>
+          <td>按布局解析一个 Sheet</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr />
+    <h2 id="section-9">4. 核心概念模型</h2>
+    <h3 id="excelcolumn">4.1 ExcelColumn（列定义，单一事实来源）</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>成员</th>
+          <th>类型</th>
+          <th>说明</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <code>Name</code>
+          </td>
+          <td>string</td>
+          <td>表头显示文字（导入时按此定位列）</td>
+        </tr>
+        <tr>
+          <td>
+            <code>Field</code>
+          </td>
+          <td>string</td>
+          <td>实体属性名</td>
+        </tr>
+        <tr>
+          <td>
+            <code>Order</code>
+          </td>
+          <td>int</td>
+          <td>列顺序</td>
+        </tr>
+        <tr>
+          <td>
+            <code>Visible</code>
+          </td>
+          <td>bool</td>
+          <td>是否显示；<code>false</code> 为隐藏列（保留位置）</td>
+        </tr>
+        <tr>
+          <td>
+            <code>IsLocked</code>
+          </td>
+          <td>bool</td>
+          <td>整列锁定</td>
+        </tr>
+        <tr>
+          <td>
+            <code>Formula</code>
+          </td>
+          <td>string</td>
+          <td>公式模板，如 <code>IFERROR({Qty}*{Price},"")</code>，无需等号</td>
+        </tr>
+        <tr>
+          <td>
+            <code>ZeroShowWhiteSpace</code>
+          </td>
+          <td>bool</td>
+          <td>0 值显示为空白</td>
+        </tr>
+        <tr>
+          <td>
+            <code>HeaderColor</code>
+          </td>
+          <td>short</td>
+          <td>表头字体颜色（HSSFColor 索引）</td>
+        </tr>
+        <tr>
+          <td>
+            <code>GroupName</code> / <code>GroupText</code></td>
+          <td>string</td>
+          <td>分组表头：分组标识 / 分组显示文字</td>
+        </tr>
+        <tr>
+          <td>
+            <code>DropdownOptions</code>
+          </td>
+          <td>IList&lt;string&gt;</td>
+          <td>数据验证下拉选项</td>
+        </tr>
+        <tr>
+          <td>
+            <code>Width</code>
+          </td>
+          <td>int?</td>
+          <td>列宽（字符数）；<code>null</code> 按表头文字自适应</td>
+        </tr>
+        <tr>
+          <td>
+            <code>Alignment</code>
+          </td>
+          <td>CellAlignment</td>
+          <td>水平对齐</td>
+        </tr>
+        <tr>
+          <td>
+            <code>WriteAsNumeric</code>
+          </td>
+          <td>bool</td>
+          <td>是否按数值写入（false 统一按文本）</td>
+        </tr>
+        <tr>
+          <td>
+            <code>Clone()</code>
+          </td>
+          <td>ExcelColumn</td>
+          <td>深拷贝（避免引用共享）</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3 id="excelcolumnattribute">4.2 ExcelColumnAttribute（特性版）</h3>
+    <p>与 <code>ExcelColumn</code> 一一对应，用于在实体属性上声明。注意：</p>
+    <ul>
+      <li>
+        <code>Order</code> 为 0 时仍按 <code>Order</code> 再按 <code>Name</code> 排序（<code>AttributeColumnProvider</code> 的排序逻辑）。</li>
+      <li>
+        <code>Width</code> 为 <code>int</code>，<strong>0 表示自适应</strong>（特性参数不允许可空值类型，故不使用 <code>int?</code>）。</li>
+      <li>
+        <code>DropdownOptions</code> 为 <code>string[]</code>。</li>
+      <li>特性继承自 <code>Attribute</code>，可设 <code>Field</code> 显式指定实体属性名（默认取属性名）。</li>
+    </ul>
+    <h3 id="headerkinds">4.3 HeaderKinds（表头类型常量）</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>常量</th>
+          <th>值</th>
+          <th>写入策略</th>
+          <th>读取策略</th>
+          <th>HeaderRowCount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <code>HeaderKinds.Single</code>
+          </td>
+          <td>
+            <code>"Single"</code>
+          </td>
+          <td>单表头：第 1 行列名</td>
+          <td>按列名定位</td>
+          <td>1</td>
+        </tr>
+        <tr>
+          <td>
+            <code>HeaderKinds.Group</code>
+          </td>
+          <td>
+            <code>"Group"</code>
+          </td>
+          <td>二级表头：第 1 行分组、第 2 行列名</td>
+          <td>按「列名_分组名」定位</td>
+          <td>2</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3 id="section-10">4.4 选项类</h3>
+    <ul>
+      <li>
+        <strong>ExcelExportOptions</strong>：<code>SheetName</code>、<code>HeaderKind</code>、<code>Columns</code>（程序化列定义，非空时优先于特性发现）、<code>Protection</code>、<code>FreezeHeader</code>、<code>ValidationMaxRow</code>（下拉作用最大行号，默认 1000）、<code>MaxColumnWidth</code>。</li>
+      <li>
+        <strong>ExcelImportOptions</strong>：<code>SheetName</code>（优先）、<code>SheetIndex</code>、<code>HeaderKind</code>、<code>DataStartRowIndex</code>（表头行号，1 基）、<code>SkipEmptyRows</code>、<code>ThrowOnMissingColumns</code>、<code>ThrowOnUnexpectedColumns</code>、<code>IgnoreReadOnlyColumns</code>、<code>Columns</code>、<code>Errors</code>。</li>
+      <li>
+        <strong>SheetProtectionOptions</strong>：<code>Enabled</code>、<code>Password</code>（默认 <code>"1234"</code>）、<code>AllowInsertRows</code> / <code>AllowDeleteRows</code> / <code>AllowFormat</code>（默认均放开）。</li>
+    </ul>
+    <h3 id="section-11">4.5 门面与辅助</h3>
+    <ul>
+      <li>
+        <strong>ExcelEngine</strong>：统一入口，静态 <code>CreateDefault()</code> 或由 <code>ExcelEngineBuilder</code> 构建。</li>
+      <li>
+        <strong>ExcelEngineBuilder</strong>：扩展注册入口。</li>
+      <li>
+        <strong>ExcelExportResult</strong>：同时承载 <code>Workbook</code> / <code>Bytes</code> / <code>Base64</code> / <code>Stream</code>，<code>IDisposable</code>。</li>
+      <li>
+        <strong>SheetSpec</strong>：多 Sheet 导出的单个 Sheet 规格（<code>Name</code> + <code>RowType</code> + <code>Rows</code> + <code>Options</code>）。</li>
+    </ul>
+    <hr />
+    <h2 id="section-12">5. 使用说明</h2>
+    <h3 id="section-13">5.1 快速开始</h3>
+    <pre>
+      <code class="language-csharp">using MagicFrame.Excel.Attributes;
+using MagicFrame.Excel.Engine;
+
+public class Employee
+{
+    [ExcelColumn("姓名", Order = 1)]
+    public string Name { get; set; } = "";
+
+    [ExcelColumn("年龄", Order = 2)]
+    public int Age { get; set; }
+}
+
+// 导出
+var engine = ExcelEngine.CreateDefault();
+var rows = new List&lt;Employee&gt; { new() { Name = "张三", Age = 28 } };
+byte[] bytes = engine.ExportBytes(rows, new ExcelExportOptions { SheetName = "员工表" });
+
+// 导入
+var back = engine.Import&lt;Employee&gt;(bytes, new ExcelImportOptions { SheetName = "员工表" });
+</code>
+    </pre>
+    <h3 id="section-14">5.2 导出形态</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>方法</th>
+          <th>返回</th>
+          <th>适用场景</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <code>Export&lt;T&gt;</code>
+          </td>
+          <td>
+            <code>ExcelExportResult</code>
+          </td>
+          <td>需要同时拿到工作簿/字节/流</td>
+        </tr>
+        <tr>
+          <td>
+            <code>ExportBytes&lt;T&gt;</code>
+          </td>
+          <td>
+            <code>byte[]</code>
+          </td>
+          <td>直接写文件、传存储</td>
+        </tr>
+        <tr>
+          <td>
+            <code>ExportBase64&lt;T&gt;</code>
+          </td>
+          <td>
+            <code>string</code>
+          </td>
+          <td>前端下载（Data URI）</td>
+        </tr>
+        <tr>
+          <td>
+            <code>ExportStream&lt;T&gt;</code>
+          </td>
+          <td>
+            <code>MemoryStream</code>
+          </td>
+          <td>流式返回（Position 已归零）</td>
+        </tr>
+        <tr>
+          <td>
+            <code>ExportToFile&lt;T&gt;</code>
+          </td>
+          <td>void</td>
+          <td>写本地文件</td>
+        </tr>
+        <tr>
+          <td>
+            <code>ExportSheets(IEnumerable&lt;SheetSpec&gt;)</code>
+          </td>
+          <td>
+            <code>ExcelExportResult</code>
+          </td>
+          <td>多 Sheet、可异类型</td>
+        </tr>
+        <tr>
+          <td>
+            <code>ExportSheets&lt;T&gt;(IDictionary&lt;string, IList&lt;T&gt;&gt;)</code>
+          </td>
+          <td>
+            <code>ExcelExportResult</code>
+          </td>
+          <td>多 Sheet、同类型便捷重载</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3 id="section-15">5.3 导入形态</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>方法</th>
+          <th>输入</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <code>Import&lt;T&gt;(byte[])</code>
+          </td>
+          <td>字节</td>
+        </tr>
+        <tr>
+          <td>
+            <code>Import&lt;T&gt;(string base64)</code>
+          </td>
+          <td>Base64</td>
+        </tr>
+        <tr>
+          <td>
+            <code>ImportFile&lt;T&gt;(string path)</code>
+          </td>
+          <td>本地文件</td>
+        </tr>
+        <tr>
+          <td>
+            <code>Import&lt;T&gt;(Stream)</code>
+          </td>
+          <td>任意可读流</td>
+        </tr>
+      </tbody>
+    </table>
+    <blockquote>
+      <p>导入按 <code>ExcelImportOptions.SheetName</code> 选 Sheet，为空时用 <code>SheetIndex</code>。<code>DataStartRowIndex</code> 指表头所在行（1 基，单表头默认 1、分组表头默认 2），数据从下一行开始。</p>
+    </blockquote>
+    <h3 id="section-16">5.4 导入列对应校验</h3>
+    <p>导入时会校验 <strong>Excel 的列与实体列是否对应</strong>，校验结果写入 <code>ExcelImportOptions.Errors</code>，并按选项决定是否抛异常：</p>
+    <table>
+      <thead>
+        <tr>
+          <th>校验项</th>
+          <th>触发条件</th>
+          <th>默认行为</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>缺失列</td>
+          <td>实体期望的可见列在 Excel 中找不到</td>
+          <td>
+            <code>ThrowOnMissingColumns=true</code>（默认）抛 <code>ExcelImportException</code></td>
+        </tr>
+        <tr>
+          <td>多余列</td>
+          <td>Excel 中的列无法对应任何实体列</td>
+          <td>仅写入 <code>Errors</code>；<code>ThrowOnUnexpectedColumns=true</code> 时抛异常</td>
+        </tr>
+        <tr>
+          <td>只读列忽略</td>
+          <td>列映射到只读（get-only）或不存在属性的实体列</td>
+          <td>
+            <code>IgnoreReadOnlyColumns=true</code>（默认）不写、不视为缺失，仅记录 <code>Errors</code></td>
+        </tr>
+        <tr>
+          <td>表头重复列</td>
+          <td>Excel 表头出现重复列名</td>
+          <td>按首个出现位置映射，记录 <code>Errors</code> 提示</td>
+        </tr>
+      </tbody>
+    </table>
+    <pre>
+      <code class="language-csharp">var options = new ExcelImportOptions
+{
+    SheetName = "员工表",
+    ThrowOnUnexpectedColumns = true,   // 多余列也视为错误
+    // IgnoreReadOnlyColumns = false,  // 需要只读列必须存在时打开
+};
+try
+{
+    var rows = engine.Import&lt;Employee&gt;(bytes, options);
+}
+catch (ExcelImportException ex)
+{
+    // ex.Message 包含具体缺失/多余列名
+}
+// 未抛异常时也可读取 options.Errors 查看全部校验提示
+foreach (var msg in options.Errors) Console.WriteLine(msg);
+</code>
+    </pre>
+    <blockquote>
+      <p>
+        <strong>只读列的判定</strong>：仅 <code>get-only</code>（<code>CanWrite == false</code>）属性视为只读忽略；<code>private set</code> 属性经反射仍可写，不算只读。列 <code>Field</code> 指向不存在的属性时按可写处理（为自定义访问器如字典行保留通道），写入由访问器自行处理。</p>
+    </blockquote>
+    <h3 id="section-17">5.4 特性配置详解</h3>
+    <pre>
+      <code class="language-csharp">public class Product
+{
+    // 基础列：列名 + 顺序 + 宽度（0=自适应）
+    [ExcelColumn("名称", Order = 1, Width = 16)]
+    public string Name { get; set; } = "";
+
+    // 下拉验证：限定可选值，作用到 ValidationMaxRow
+    [ExcelColumn("分类", Order = 2, DropdownOptions = new[] { "电子", "食品", "服饰" })]
+    public string Category { get; set; } = "";
+
+    // 整列锁定：该列（含用户新增行的该列）不可编辑
+    [ExcelColumn("工号", Order = 3, IsLocked = true)]
+    public string No { get; set; } = "";
+
+    // 公式：{Field} 会被替换为当前行对应单元格地址（如 B2*C2）
+    [ExcelColumn("合计", Order = 4, IsLocked = true, Formula = "{Qty}*{Price}")]
+    public decimal Total { get; set; }
+
+    // 0 值显示为空白
+    [ExcelColumn("销量", Order = 5, ZeroShowWhiteSpace = true)]
+    public int Sales { get; set; }
+
+    // 隐藏列：保留位置但隐藏
+    [ExcelColumn("内部备注", Order = 6, Visible = false)]
+    public string? Remark { get; set; }
+
+    // 分组表头：同一 GroupName 的多列在第 1 行合并显示 GroupText
+    [ExcelColumn("业绩", Order = 7, GroupName = "Kpi", GroupText = "考核信息")]
+    public int Performance { get; set; }
+}
+</code>
+    </pre>
+    <p>
+      <strong>导出选项示例（含锁定保护、分组表头）</strong>：</p>
+    <pre>
+      <code class="language-csharp">engine.ExportToFile(rows, "out.xlsx", new ExcelExportOptions
+{
+    SheetName = "考核表",
+    HeaderKind = HeaderKinds.Group,               // 分组表头
+    Protection = new SheetProtectionOptions       // 锁定 + 放开新增/删除/格式
+    {
+        Password = "1234",
+        AllowInsertRows = true,
+        AllowDeleteRows = true,
+        AllowFormat = true,
+    },
+});
+</code>
+    </pre>
+    <h3 id="section-18">5.5 程序化列定义（不走特性）</h3>
+    <p>当实体不可加特性（第三方类型、匿名/动态结构、字典行）时，可手工构建 <code>ExcelColumn</code>：</p>
+    <pre>
+      <code class="language-csharp">var columns = new[]
+{
+    new ExcelColumn { Name = "编号", Field = "Id", Order = 1 },
+    new ExcelColumn { Name = "金额", Field = "Amount", Order = 2, Width = 12 },
+};
+
+engine.ExportToFile(rows, "out.xlsx",
+    new ExcelExportOptions { Columns = columns, SheetName = "表" });
+</code>
+    </pre>
+    <blockquote>
+      <p>只要 <code>ExcelExportOptions.Columns</code> 或 <code>ExcelImportOptions.Columns</code> 非空，就<strong>优先使用</strong>程序化列定义，不再走特性发现。</p>
+    </blockquote>
+    <h3 id="sheet">5.6 多 Sheet 导出</h3>
+    <pre>
+      <code class="language-csharp">var specs = new[]
+{
+    SheetSpec.Of("员工表", employees),
+    SheetSpec.Of("考核表", assessments),          // 可异类型
+};
+byte[] bytes = engine.ExportSheets(specs).Bytes;
+
+// 解析各 Sheet 时用 SheetName 指定
+var emp = engine.Import&lt;Employee&gt;(bytes, new ExcelImportOptions { SheetName = "员工表" });
+</code>
+    </pre>
+    <hr />
+    <h2 id="section-19">6. 扩展说明</h2>
+    <p>扩展的入口只有一个：<code>ExcelEngineBuilder</code>。<strong>核心引擎代码零改动</strong>，通过替换/追加扩展实现即可获得新能力。</p>
+    <pre>
+      <code class="language-csharp">var engine = ExcelEngineBuilder.Create()
+    .UseColumnProvider(...)     // 替换列提供器
+    .UseEntityAccessor(...)     // 替换实体访问器
+    .UseCellValueConverter(...) // 替换值转换器
+    .UseFormulaResolver(...)    // 替换公式解析器
+    .RegisterSheetWriter(kind, ...)  // 追加/覆盖写入策略
+    .RegisterSheetReader(kind, ...)  // 追加/覆盖读取策略
+    .Build();
+</code>
+    </pre>
+    <h3 id="icolumnprovider">6.1 IColumnProvider —— 扩展列定义来源</h3>
+    <pre>
+      <code class="language-csharp">public interface IColumnProvider
+{
+    IReadOnlyList&lt;ExcelColumn&gt; GetColumns(Type entityType);
+}
+</code>
+    </pre>
+    <p>
+      <strong>适用</strong>：列定义来自配置文件、数据库、前端下发、动态表头等。</p>
+    <pre>
+      <code class="language-csharp">public class ConfigColumnProvider : IColumnProvider
+{
+    private readonly IReadOnlyList&lt;ExcelColumn&gt; _columns;
+    public ConfigColumnProvider(IReadOnlyList&lt;ExcelColumn&gt; c) =&gt; _columns = c;
+    public IReadOnlyList&lt;ExcelColumn&gt; GetColumns(Type entityType) =&gt; _columns;
+}
+
+var engine = ExcelEngineBuilder.Create().UseColumnProvider(new ConfigColumnProvider(cols)).Build();
+</code>
+    </pre>
+    <h3 id="ientityaccessor">6.2 IEntityAccessor —— 扩展实体读写</h3>
+    <pre>
+      <code class="language-csharp">public interface IEntityAccessor
+{
+    object? Read(object entity, string field);
+    void Write(object entity, string field, object? value);
+}
+</code>
+    </pre>
+    <p>
+      <strong>适用</strong>：支持字典行、索引器实体、DataRow、非 POCO 结构。</p>
+    <pre>
+      <code class="language-csharp">public class DictionaryAccessor : IEntityAccessor
+{
+    public object? Read(object e, string f)
+        =&gt; e is IDictionary&lt;string, object?&gt; d &amp;&amp; d.TryGetValue(f, out var v) ? v : null;
+
+    public void Write(object e, string f, object? v)
+    {
+        if (e is IDictionary&lt;string, object?&gt; d) d[f] = v;
+    }
+}
+</code>
+    </pre>
+    <h3 id="icellvalueconverter">6.3 ICellValueConverter —— 扩展值转换</h3>
+    <pre>
+      <code class="language-csharp">public interface ICellValueConverter
+{
+    object? ReadCell(ICell? cell, Type targetType);  // 读单元格 → 目标属性类型
+    string? ToCellText(object? value);               // 实体值 → 单元格文本
+    bool IsNumeric(object? value);                   // 是否按数值单元格写入
+}
+</code>
+    </pre>
+    <p>
+      <strong>适用</strong>：枚举映射、加密/脱敏、自定义格式化（货币、百分比）、JSON 等。</p>
+    <pre>
+      <code class="language-csharp">public class CurrencyConverter : ICellValueConverter
+{
+    // 组合默认实现再改写，推荐做法
+    public object? ReadCell(ICell? cell, Type t)
+        =&gt; DefaultCellValueConverter.Instance.ReadCell(cell, t);
+
+    public string? ToCellText(object? v)
+        =&gt; v is decimal d ? "¥" + d.ToString("N2") : v?.ToString();
+
+    public bool IsNumeric(object? v) =&gt; false; // 一律按文本写入
+}
+</code>
+    </pre>
+    <h3 id="iformularesolver">6.4 IFormulaResolver —— 扩展公式语法</h3>
+    <pre>
+      <code class="language-csharp">public interface IFormulaResolver
+{
+    string Resolve(string template, IReadOnlyDictionary&lt;string, string&gt; fieldToAddress);
+}
+</code>
+    </pre>
+    <p>
+      <strong>适用</strong>：更换占位符语法（如 <code>[[Field]]</code>、<code>{{Field}}</code>）、接入安全校验、公式白名单。</p>
+    <pre>
+      <code class="language-csharp">// 把 [[Qty]]*[[Price]] 替换为 A2*B2
+public class DoubleBracketResolver : IFormulaResolver { /* 正则替换 */ }
+</code>
+    </pre>
+    <h3 id="isheetwriter-isheetreader">6.5 ISheetWriter / ISheetReader —— 扩展表头布局（最强大的扩展点）</h3>
+    <pre>
+      <code class="language-csharp">public interface ISheetWriter
+{
+    int HeaderRowCount { get; }
+    void Write(ISheet sheet, IWorkbook workbook, IReadOnlyList&lt;ExcelColumn&gt; columns,
+        IEntityAccessor accessor, ICellValueConverter converter, IFormulaResolver formulaResolver,
+        IEnumerable&lt;object&gt; rows, ExcelExportOptions options);
+}
+
+public interface ISheetReader
+{
+    IReadOnlyList&lt;object&gt; Read(ISheet sheet, IReadOnlyList&lt;ExcelColumn&gt; columns,
+        Type entityType, IEntityAccessor accessor, ICellValueConverter converter,
+        ExcelImportOptions options);
+}
+</code>
+    </pre>
+    <p>
+      <strong>适用</strong>：固定标题 + 列名、多级表头、自定义样式表头、表头行内嵌汇总等。</p>
+    <pre>
+      <code class="language-csharp">const string FixedTitle = "FixedTitle";
+var engine = ExcelEngineBuilder.Create()
+    .RegisterSheetWriter(FixedTitle, new FixedTitleWriter())   // 第 1 行固定标题，第 2 行列名
+    .RegisterSheetReader(FixedTitle, new FixedTitleReader())
+    .Build();
+
+engine.ExportToFile(rows, "out.xlsx",
+    new ExcelExportOptions { HeaderKind = FixedTitle, Columns = cols });
+var back = engine.ImportFile&lt;MyRow&gt;("out.xlsx",
+    new ExcelImportOptions { HeaderKind = FixedTitle, DataStartRowIndex = 2, Columns = cols });
+</code>
+    </pre>
+    <blockquote>
+      <p>注册到<strong>新的 HeaderKind</strong> 即为「追加」，注册到已存在的 <code>"Single"</code> / <code>"Group"</code> 即为「覆盖」默认实现。</p>
+    </blockquote>
+    <hr />
+    <h2 id="section-20">7. 扩展的注意事项</h2>
+    <h3 id="section-21">7.1 写入器/读取器的表头布局必须一致</h3>
+    <ul>
+      <li>导出用 <code>HeaderKind = "X"</code> 写了某种布局，<strong>导入必须用同一个 HeaderKind</strong>，否则按错位读取。</li>
+      <li>
+        <code>ISheetWriter.HeaderRowCount</code> 必须与读取器假设的表头行数一致；导入时 <code>DataStartRowIndex</code> 也要与之对应（默认值只适配内置的单/分组表头）。</li>
+      <li>建议在自定义 <code>ISheetReader</code> 内按 <code>DataStartRowIndex</code> 计算数据起始行，不要硬编码行号。</li>
+    </ul>
+    <h3 id="section-22">7.2 样式不能跨工作簿复用</h3>
+    <ul>
+      <li>
+        <code>WriterStyles</code> 按 Workbook 在每次 <code>Write</code> 时创建，<code>ISheetWriter</code> 实现<strong>不要</strong>缓存任何 <code>ICellStyle</code>（NPOI 样式绑定所属 Workbook，跨簿复用会抛异常）。</li>
+      <li>同理，自己写的写入策略若创建样式，请在方法内部基于传入的 <code>workbook</code> 创建。</li>
+    </ul>
+    <h3 id="section-23">7.3 扩展实现须保持无状态（可单例）</h3>
+    <ul>
+      <li>
+        <code>ExcelEngineBuilder</code> 默认把策略当单例用。自定义实现内<strong>不要持有跨调用可变状态</strong>；确有状态应放到每行/每次写入的局部对象中。</li>
+      <li>这是本库能「单例复用」的前提，也是并发/性能的基础。</li>
+    </ul>
+    <h3 id="section-24">7.4 整列锁定的实现细节</h3>
+    <ul>
+      <li>锁定铺底发生在<strong>写单元格之前</strong>（<code>ApplyColumnDefaults</code> → <code>SetDefaultColumnStyle</code>），因为 <code>SetDefaultColumnStyle</code> 会覆盖已存在单元格的样式。</li>
+      <li>数据单元格样式由 <code>WriterStyles.CellStyleFor</code> 按 <code>IsLocked</code> 决定，与默认列样式保持一致。</li>
+      <li>只有存在 <code>IsLocked</code> 列<strong>或</strong>显式传 <code>Protection</code> 时才执行 <code>ProtectSheet</code>；保护对<strong>整张表</strong>生效（锁与不锁靠单元格样式的 <code>IsLocked</code> 区分）。</li>
+    </ul>
+    <h3 id="section-25">7.5 公式占位符与列地址</h3>
+    <ul>
+      <li>默认解析器把 <code>{Field}</code> 替换为「当前行 + 该列」的单元格地址（如 <code>{Qty}</code> → <code>B3</code>）。占位符键是列的 <code>Field</code>，不是列名。</li>
+      <li>公式<strong>无需等号</strong>开头；<code>DefaultFormulaResolver</code> 只做花括号替换，不做公式合法性校验。</li>
+      <li>导出时引擎调用 <code>XSSFFormulaEvaluator.EvaluateAllFormulaCells</code> 预计算，因此导出的文件直接可见结果；导入时对公式单元格也会重新求值。</li>
+    </ul>
+    <h3 id="section-26">7.6 自定义值转换器的组合方式</h3>
+    <ul>
+      <li>推荐在自定义 <code>ICellValueConverter</code> 内部<strong>组合</strong><code>DefaultCellValueConverter.Instance</code>（先取原始值再加工），避免重复实现类型转换逻辑。</li>
+      <li>
+        <code>IsNumeric</code> 返回 <code>true</code> 时，写入逻辑会走 <code>Convert.ToDouble</code> 数值分支；返回 <code>false</code> 时统一走 <code>ToCellText</code> 文本分支。需与列 <code>WriteAsNumeric</code> 配合理解。</li>
+    </ul>
+    <h3 id="section-27">7.7 读取器的属性类型解析</h3>
+    <ul>
+      <li>内置读取器通过 <code>entityType.GetProperty(field)</code> 推断目标属性类型，<strong>找不到属性时按 <code>string</code> 处理</strong>。</li>
+      <li>因此用「字典访问器 + 字典行」这类无强类型属性场景，单元格数值会以字符串形态读回；如需类型化，请配套自定义 <code>ICellValueConverter</code> 或在访问器内自行转换。</li>
+    </ul>
+    <h3 id="where-t-new">7.8 泛型约束 <code>where T : new()</code></h3>
+    <ul>
+      <li>引擎的导出/导入方法均要求 <code>T : new()</code>（读取时用 <code>Activator.CreateInstance</code> 建实体）。</li>
+      <li>匿名类型不可满足该约束；请使用具名类或程序化列 + 自定义访问器。</li>
+    </ul>
+    <h3 id="section-28">7.9 注册表键不区分大小写</h3>
+    <ul>
+      <li>
+        <code>SheetWriterRegistry</code> / <code>SheetReaderRegistry</code> 使用 <code>OrdinalIgnoreCase</code>，HeaderKind 大小写不敏感；<code>"group"</code> 与 <code>"Group"</code> 等价。</li>
+    </ul>
+    <h3 id="section-29">7.10 导入校验的语义</h3>
+    <ul>
+      <li>校验发生在读取策略内（<code>Readers/ColumnValidator.cs</code>），<strong>单表头与分组表头都生效</strong>，但各自按自身的列 key 约定（单表头用列名；分组表头用「列名_分组名」）。</li>
+      <li>「多余列」判定使用<strong>全部</strong>已知列（含隐藏列）作为识别集合，因此模板中的隐藏列不会被误判为多余列。</li>
+      <li>「只读列」仅指 <code>get-only</code> 属性（<code>CanWrite == false</code>）；<code>private set</code> 属性经反射可写，不在此列。</li>
+      <li>列 <code>Field</code> 在实体上不存在时按「可写」处理：这是为了兼容自定义访问器（如字典行）可处理任意字段；配合默认反射访问器时写入会被静默跳过。</li>
+      <li>校验结果<strong>始终</strong>写入 <code>ExcelImportOptions.Errors</code>（含已忽略列、重复列等提示），异常只按选项抛出，便于先收集后决策。</li>
+    </ul>
+    <hr />
+    <h2 id="section-30">8. 扩展的边界</h2>
+    <p>明确「本库不做什么 / 不能做什么」，避免扩展时踩坑：</p>
+    <h3 id="section-31">8.1 文件格式边界</h3>
+    <ul>
+      <li>
+        <strong>仅支持 <code>.xlsx</code>（XSSF/OpenXML）</strong>，不支持 <code>.xls</code>（HSSF）。引擎内部固定 <code>XSSFWorkbook</code>。</li>
+      <li>输出为 ZIP 容器（魔数 <code>PK</code>），导入亦按 XSSF 解析。</li>
+    </ul>
+    <h3 id="section-32">8.2 表头布局边界</h3>
+    <ul>
+      <li>内置仅 <code>Single</code>（1 行）与 <code>Group</code>（2 行）两种布局。更多布局（三级表头、表头内嵌样式、行高表头等）<strong>必须</strong>自行实现 <code>ISheetWriter</code>/<code>ISheetReader</code> 并注册新 HeaderKind——这是本库的「扩展通道」，而非内置能力。</li>
+    </ul>
+    <h3 id="section-33">8.3 数据验证边界</h3>
+    <ul>
+      <li>仅支持<strong>显式列表下拉</strong>（<code>DropdownOptions</code> 生成 <code>CreateExplicitListConstraint</code>）。</li>
+      <li>不支持区间/日期/自定义公式等其它验证类型；若要支持，需在自定义写入策略中自行叠加 <code>IDataValidation</code>。</li>
+    </ul>
+    <h3 id="section-34">8.4 锁定与保护边界</h3>
+    <ul>
+      <li>保护粒度是<strong>整个工作表</strong>（<code>ProtectSheet</code>）；「列级锁定」靠单元格/默认列样式的 <code>IsLocked</code> 区分，不存在独立的按列保护对象。</li>
+      <li>密码为空时 <code>SheetProtector.Apply</code> 直接返回（不保护）。</li>
+      <li>
+        <code>AllowInsertRows=false</code> 对应 <code>CT_SheetProtection.insertRows = true</code>（即保持禁止）；<code>true</code> 则显式放开。该语义与 XML 属性命名相反，扩展时勿混淆。</li>
+    </ul>
+    <h3 id="section-35">8.5 公式边界</h3>
+    <ul>
+      <li>公式为<strong>占位符替换</strong>，不解析公式内容、不校验引用合法性；跨 Sheet 引用、易失函数等由 Excel/NPOI 自行处理。</li>
+      <li>默认解析器仅支持 <code>{Field}</code> 语法；其它语法需自定义 <code>IFormulaResolver</code>。</li>
+      <li>导入时对公式单元格求值依赖 NPOI 公式求值器；求值失败的公式回退为公式字符串本身。</li>
+    </ul>
+    <h3 id="section-36">8.6 空行/类型边界</h3>
+    <ul>
+      <li>
+        <code>SkipEmptyRows</code> 的判定是「任意单元格有非空值即视为有数据」。对<strong>含数值类型属性的实体</strong>，全空行的数值列默认为 <code>0</code>，会被视为有意义而导入（这是当前实现的行为边界，非缺陷）。</li>
+      <li>若需严格跳过，可自行在读取策略或访问器中按业务规则过滤。</li>
+    </ul>
+    <h3 id="section-37">8.7 导入校验边界</h3>
+    <ul>
+      <li>校验只针对<strong>列名对应关系</strong>，不校验单元格值与属性类型的匹配（如数值列写入文本不会报错，仅按转换规则尽力转换）。</li>
+      <li>校验基于「表头文字」而非列位置，不强制列顺序与 <code>Order</code> 一致。</li>
+      <li>「只读」以反射的 <code>CanWrite</code> 为准，不感知 <code>init</code> 等编译期只读语义。</li>
+      <li>自定义访问器（字典行等）不经过属性反射校验，其列的读写完全由访问器决定。</li>
+    </ul>
+    <h3 id="sheet-1">8.8 单 Sheet 导入边界</h3>
+    <ul>
+      <li>
+        <code>Import&lt;T&gt;</code> 一次解析一个 Sheet（按 <code>SheetName</code>/<code>SheetIndex</code>）。多 Sheet 解析需多次调用 <code>Import&lt;T&gt;</code>。</li>
+      <li>多 Sheet 导出支持异类型（<code>SheetSpec</code>），但同一 Sheet 内仍是同一 <code>RowType</code>。</li>
+    </ul>
+    <h3 id="section-38">8.9 并发与线程安全边界</h3>
+    <ul>
+      <li>引擎与内置策略<strong>无共享可变状态</strong>，可跨线程复用引擎实例。</li>
+      <li>自定义扩展若引入可变状态，线程安全由扩展作者负责（见 7.3）。</li>
+    </ul>
+    <h3 id="section-39">8.10 对库本身修改的边界（开闭原则的代价）</h3>
+    <ul>
+      <li>引擎的流水线（列解析 → 策略选择 → 生成/解析）固定，<strong>不对外暴露 Sheet 级中间态</strong>；要插入额外处理（如合并单元格、图片、批注、超链接）需在自定义 <code>ISheetWriter</code> 内完成，或扩展引擎（不在本库既定职责内）。</li>
+      <li>想为库新增「内置能力」时，优先考虑以<strong>扩展实现</strong>提交，而非修改核心类，以保持对修改关闭。</li>
+    </ul>
+    <hr />
+    <h2 id="section-40">9. 构建与测试</h2>
+    <pre>
+      <code class="language-bash"># 还原 + 构建整个解决方案
+dotnet build MagicFrame.Excel.sln
+
+# 运行测试（39 个用例）
+dotnet test MagicFrame.Excel.sln
+
+# 运行演示（输出到 bin/.../output/，可传第二个参数指定输出目录）
+dotnet run --project demos/MagicFrame.Excel.Demo                    # 全部
+dotnet run --project demos/MagicFrame.Excel.Demo -- basic           # 仅基础
+dotnet run --project demos/MagicFrame.Excel.Demo -- ext             # 仅扩展
+dotnet run --project demos/MagicFrame.Excel.Demo -- basic D:\out    # 指定输出目录
+</code>
+    </pre>
+    <hr />
+    <h2 id="api">附：API 速查</h2>
+    <pre>
+      <code>ExcelEngine.CreateDefault() / ExcelEngineBuilder.Create()...Build()
+  ├─ Export&lt;T&gt; / ExportBytes&lt;T&gt; / ExportBase64&lt;T&gt; / ExportStream&lt;T&gt; / ExportToFile&lt;T&gt;
+  ├─ ExportSheets(SheetSpec[]) / ExportSheets(IDictionary&lt;string, IList&lt;T&gt;&gt;)
+  └─ Import&lt;T&gt;(bytes | base64 | file | stream)
+
+ExcelExportOptions   { SheetName, HeaderKind, Columns, Protection, FreezeHeader, ValidationMaxRow, MaxColumnWidth }
+ExcelImportOptions   { SheetName, SheetIndex, HeaderKind, DataStartRowIndex, SkipEmptyRows,
+                       ThrowOnMissingColumns, ThrowOnUnexpectedColumns, IgnoreReadOnlyColumns, Columns, Errors }
+SheetProtectionOptions { Enabled, Password, AllowInsertRows, AllowDeleteRows, AllowFormat }
+ExcelColumn / [ExcelColumn]  { Name, Field, Order, Visible, IsLocked, Formula, ZeroShowWhiteSpace,
+                               HeaderColor, GroupName, GroupText, DropdownOptions, Width, Alignment, WriteAsNumeric }
+HeaderKinds          { Single, Group }
+</code>
+    </pre>
+  </body>
+</html>

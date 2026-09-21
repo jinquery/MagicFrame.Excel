@@ -1,0 +1,180 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.2.8 Chrome/112.0.5615.165 Electron/24.2.0 Safari/537.36" modified="2026-09-09T02:19:55.152Z" version="21.2.8" etag="aPTzXYHMbCftJWOtzS7Z" type="device">
+  <diagram id="architecture" name="系统总体架构">
+    <mxGraphModel dx="2074" dy="1204" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="700" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="layer-app" value="应用层（对外 API）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=top;fontStyle=1;fontSize=13;" parent="1" vertex="1">
+          <mxGeometry x="20" y="20" width="960" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="layer-engine" value="引擎层（对修改关闭）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=top;fontStyle=1;fontSize=13;" parent="1" vertex="1">
+          <mxGeometry x="20" y="150" width="960" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="layer-api" value="扩展点接口（对扩展开放 · Abstractions）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;verticalAlign=top;fontStyle=1;fontSize=13;" parent="1" vertex="1">
+          <mxGeometry x="20" y="280" width="960" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="layer-impl" value="默认实现（可整体替换 / 追加）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;fontStyle=1;fontSize=13;" parent="1" vertex="1">
+          <mxGeometry x="20" y="410" width="960" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="layer-npoi" value="基础设施：NPOI 2.7.2（.xlsx / XSSF）" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;verticalAlign=top;fontStyle=1;fontSize=13;" parent="1" vertex="1">
+          <mxGeometry x="20" y="540" width="960" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="app-export" value="导出 API&lt;br&gt;Export / ExportBytes / ExportBase64&lt;br&gt;ExportStream / ExportToFile" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="60" y="45" width="250" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="app-import" value="导入 API&lt;br&gt;Import / ImportFile / Import(Stream)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="360" y="45" width="240" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="app-sheets" value="多 Sheet&lt;br&gt;ExportSheets / SheetSpec" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="650" y="45" width="250" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="eng-facade" value="ExcelEngine 门面&lt;br&gt;固定流水线：列解析→策略选择→生成/解析" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="60" y="175" width="280" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="Ew9mveS6RKXqmt0u1VMJ-1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="eng-builder" target="eng-facade">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eng-builder" value="ExcelEngineBuilder&lt;br&gt;扩展注册入口（Use*/Register*）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" vertex="1">
+          <mxGeometry x="400" y="175" width="260" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="eng-result" value="ExcelExportResult&lt;br&gt;Workbook / Bytes / Base64 / Stream" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" vertex="1">
+          <mxGeometry x="720" y="175" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="if-provider" value="IColumnProvider" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#9673a6;fontStyle=2;" parent="1" vertex="1">
+          <mxGeometry x="40" y="320" width="145" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="if-accessor" value="IEntityAccessor" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#9673a6;fontStyle=2;" parent="1" vertex="1">
+          <mxGeometry x="195" y="320" width="145" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="if-converter" value="ICellValueConverter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#9673a6;fontStyle=2;" parent="1" vertex="1">
+          <mxGeometry x="350" y="320" width="145" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="if-resolver" value="IFormulaResolver" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#9673a6;fontStyle=2;" parent="1" vertex="1">
+          <mxGeometry x="505" y="320" width="145" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="if-writer" value="ISheetWriter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#9673a6;fontStyle=2;" parent="1" vertex="1">
+          <mxGeometry x="660" y="320" width="145" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="if-reader" value="ISheetReader" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#9673a6;fontStyle=2;" parent="1" vertex="1">
+          <mxGeometry x="815" y="320" width="145" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="impl-provider" value="AttributeColumnProvider（特性发现）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="40" y="450" width="145" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="impl-accessor" value="ReflectionEntityAccessor（表达式树编译）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="195" y="450" width="145" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="impl-converter" value="DefaultCellValueConverter（求值器缓存）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="350" y="450" width="145" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="impl-resolver" value="DefaultFormulaResolver（{Field}→地址）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="505" y="450" width="145" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="impl-writer" value="Single/GroupHeaderSheetWriter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="660" y="450" width="145" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="impl-reader" value="Single/GroupHeaderSheetReader" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="815" y="450" width="145" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="npoi-workbook" value="XSSFWorkbook / XSSFSheet&lt;br&gt;CT_SheetProtection · FormulaEvaluator · 数据验证" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;" parent="1" vertex="1">
+          <mxGeometry x="330" y="570" width="340" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" parent="1" source="app-export" target="eng-facade" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" parent="1" source="app-import" target="eng-facade" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="480" y="140" />
+              <mxPoint x="200" y="140" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" parent="1" source="app-sheets" target="eng-facade" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="775" y="140" />
+              <mxPoint x="200" y="140" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;" parent="1" source="eng-builder" target="eng-facade" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" parent="1" source="eng-facade" target="if-provider" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" parent="1" source="eng-facade" target="if-accessor" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" parent="1" source="eng-facade" target="if-converter" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="200" y="250" />
+              <mxPoint x="423" y="250" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" parent="1" source="eng-facade" target="if-resolver" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="200" y="250" />
+              <mxPoint x="578" y="250" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" parent="1" source="eng-facade" target="if-writer" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="200" y="250" />
+              <mxPoint x="733" y="250" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" parent="1" source="eng-facade" target="if-reader" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="200" y="250" />
+              <mxPoint x="888" y="250" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" parent="1" source="if-provider" target="impl-provider" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" parent="1" source="if-accessor" target="impl-accessor" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" parent="1" source="if-converter" target="impl-converter" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" parent="1" source="if-resolver" target="impl-resolver" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" parent="1" source="if-writer" target="impl-writer" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;" parent="1" source="if-reader" target="impl-reader" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;" parent="1" source="impl-accessor" target="npoi-workbook" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;" parent="1" source="impl-converter" target="npoi-workbook" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;" parent="1" source="impl-writer" target="npoi-workbook" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;" parent="1" source="impl-reader" target="npoi-workbook" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="888" y="530" />
+              <mxPoint x="500" y="530" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

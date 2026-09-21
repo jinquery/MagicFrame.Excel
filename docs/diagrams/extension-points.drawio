@@ -1,0 +1,152 @@
+<mxfile host="app.diagrams.net" agent="MagicFrame.Excel" version="23.1.5">
+  <diagram id="extension-points" name="扩展点与开闭原则">
+    <mxGraphModel dx="1000" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- 标题 -->
+        <mxCell id="title" value="对修改关闭、对扩展开放 —— 扩展点总览" style="text;html=1;whiteSpace=wrap;fontSize=16;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="350" y="10" width="500" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Builder -->
+        <mxCell id="builder" value="ExcelEngineBuilder&lt;br&gt;（唯一扩展入口 · 核心引擎零改动）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="460" y="60" width="280" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- 六个扩展点：接口 -> 默认 / 自定义 -->
+        <mxCell id="p1" value="列元数据来源" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="180" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p1-def" value="默认：AttributeColumnProvider（特性）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="250" width="160" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p1-cus" value="扩展：配置/数据库/前端下发" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="320" width="160" height="46" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p2" value="实体读写" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="240" y="180" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-def" value="默认：ReflectionEntityAccessor（表达式编译）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="240" y="250" width="160" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p2-cus" value="扩展：字典行 / 索引器 / DataRow" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="240" y="320" width="160" height="46" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p3" value="单元格值转换" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="440" y="180" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p3-def" value="默认：DefaultCellValueConverter（求值器复用）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="440" y="250" width="160" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p3-cus" value="扩展：货币格式 / 枚举映射 / 脱敏" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="440" y="320" width="160" height="46" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p4" value="公式占位符" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="640" y="180" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-def" value="默认：DefaultFormulaResolver（{Field}）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="640" y="250" width="160" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p4-cus" value="扩展：[[Field]] / {{Field}} 语法" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="640" y="320" width="160" height="46" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p5" value="表头写入" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="840" y="180" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p5-def" value="默认：Single / GroupHeaderSheetWriter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="840" y="250" width="160" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p5-cus" value="扩展：固定标题 / 自定义样式" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="840" y="320" width="160" height="46" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p6" value="表头读取" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="180" width="160" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="p6-def" value="默认：Single / GroupHeaderSheetReader" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="250" width="160" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="p6-cus" value="扩展：与新 HeaderKind 配套" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="320" width="160" height="46" as="geometry" />
+        </mxCell>
+
+        <!-- 连接 Builder -> 接口 -->
+        <mxCell id="c1" edge="1" parent="1" source="builder" target="p1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c2" edge="1" parent="1" source="builder" target="p2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c3" edge="1" parent="1" source="builder" target="p3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c4" edge="1" parent="1" source="builder" target="p4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c5" edge="1" parent="1" source="builder" target="p5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="c6" edge="1" parent="1" source="builder" target="p6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 接口 -> 默认/自定义 -->
+        <mxCell id="d1" edge="1" parent="1" source="p1" target="p1-def" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d1b" value="替换" edge="1" parent="1" source="p1" target="p1-cus" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d2" edge="1" parent="1" source="p2" target="p2-def" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d2b" value="替换" edge="1" parent="1" source="p2" target="p2-cus" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d3" edge="1" parent="1" source="p3" target="p3-def" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d3b" value="替换" edge="1" parent="1" source="p3" target="p3-cus" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d4" edge="1" parent="1" source="p4" target="p4-def" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d4b" value="替换" edge="1" parent="1" source="p4" target="p4-cus" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d5" edge="1" parent="1" source="p5" target="p5-def" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d5b" value="追加/覆盖" edge="1" parent="1" source="p5" target="p5-cus" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d6" edge="1" parent="1" source="p6" target="p6-def" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="d6b" value="追加/覆盖" edge="1" parent="1" source="p6" target="p6-cus" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- 底部示例代码 -->
+        <mxCell id="code" value="注册示例：
+ExcelEngineBuilder.Create()
+  .UseColumnProvider(configProvider)      // 替换列提供器
+  .UseEntityAccessor(dictAccessor)        // 替换访问器（字典行）
+  .UseCellValueConverter(currencyConv)    // 替换值转换器（货币）
+  .UseFormulaResolver(doubleBracket)      // 替换公式解析器
+  .RegisterSheetWriter(&quot;FixedTitle&quot;, w) // 追加表头写入策略
+  .RegisterSheetReader(&quot;FixedTitle&quot;, r)  // 追加表头读取策略
+  .Build();" style="text;html=1;whiteSpace=pre;align=left;spacing=10;fillColor=#f5f5f5;strokeColor=#666666;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="430" width="1160" height="230" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

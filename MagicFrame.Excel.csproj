@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>10.0</LangVersion>
+    <RootNamespace>MagicFrame.Excel</RootNamespace>
+    <AssemblyName>MagicFrame.Excel</AssemblyName>
+    <Description>基于 NPOI 的通用 Excel 生成/解析类库：泛型集合、整列锁定、公式、数据验证、多级表头。对修改关闭、对扩展开放。</Description>
+
+    <!-- NuGet 打包（E2）：dotnet pack -c Release -->
+    <PackageId>MagicFrame.Excel</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>MagicFrame</Authors>
+    <Company>MagicFrame</Company>
+    <PackageTags>Excel;NPOI;xlsx;Export;Import;Lock;Formula;Validation;GroupHeader</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="demos\**" />
+    <Compile Remove="Extensions\**" />
+    <Compile Remove="tests\**" />
+    <Compile Remove="tools\**" />
+    <EmbeddedResource Remove="demos\**" />
+    <EmbeddedResource Remove="Extensions\**" />
+    <EmbeddedResource Remove="tests\**" />
+    <EmbeddedResource Remove="tools\**" />
+    <None Remove="demos\**" />
+    <None Remove="Extensions\**" />
+    <None Remove="tests\**" />
+    <None Remove="tools\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NPOI" Version="2.7.2" />
+  </ItemGroup>
+
+</Project>
