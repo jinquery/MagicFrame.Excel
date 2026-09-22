@@ -51,7 +51,12 @@ public static class BasicDemo
             new() { Name = "王五", Department = "产品", Performance = 85, Attendance = 90, Grade = "A" },
         };
         string assessmentFile = Path.Combine(outputDir, "assessment.xlsx");
-        engine.ExportToFile(assessments, assessmentFile, new ExcelExportOptions { SheetName = "考核表", HeaderKind = HeaderKinds.Group });
+        engine.ExportToFile(assessments, assessmentFile, new ExcelExportOptions
+        {
+            SheetName = "考核表",
+            HeaderKind = HeaderKinds.Group,
+            EnableBorders = true, // 整表（表头+数据）加细边框
+        });
         var assessmentBack = engine.ImportFile<Assessment>(assessmentFile, new ExcelImportOptions { SheetName = "考核表", HeaderKind = HeaderKinds.Group });
         PrintGrid(assessmentBack.Select(a => new object?[] { a.Name, a.Department, a.Performance, a.Attendance, a.Total, a.Grade }).ToList(),
             new[] { "姓名", "部门", "业绩", "出勤", "总分(公式)", "评级" });

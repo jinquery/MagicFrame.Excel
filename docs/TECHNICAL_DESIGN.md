@@ -1,7 +1,7 @@
 # MagicFrame.Excel 技术设计文档
 
 > 版本：1.0.0
-> 适用代码：`MagicFrame.Excel` 类库（net6.0 / NPOI 2.7.2）
+> 适用代码：`MagicFrame.Excel` 类库（net6.0 / NPOI 2.7.3+）
 > 一句话定位：**基于 NPOI 的通用 Excel 生成/解析类库**，以「泛型集合 ⇄ Excel」为核心，内置公式、整列锁定、数据验证下拉、多级（分组）表头；整体遵循**对修改关闭、对扩展开放**原则。
 
 ---
@@ -48,10 +48,26 @@
 | --- | --- |
 | 目标框架 | `net6.0` |
 | 语言版本 | `C# 10`（`ImplicitUsings`、`Nullable` 开启） |
-| 依赖 | `NPOI 2.7.2` |
+| 依赖 | `NPOI 2.7.3+` |
 | 文件格式 | **仅 `.xlsx`（XSSF / OpenXML）**，引擎内部固定使用 `XSSFWorkbook` |
-| 测试 | `xUnit`（`tests/MagicFrame.Excel.Tests`，70 个用例） |
+| 测试 | `xUnit`（`tests/MagicFrame.Excel.Tests`，73 个用例） |
 | 演示 | `demos/MagicFrame.Excel.Demo`（控制台） |
+
+### 2.1 NPOI 版本兼容（重要）
+
+- **NPOI 2.7.3 起，`ICell.SetCellValue(...)` 从 `void` 改为流式返回 `ICell`**（签名变化）。若库按旧版（≤2.7.2）编译、运行时加载 2.7.3+，会抛 `MissingMethodException: 找不到 ICell.SetCellValue`。
+- 本库已按 **NPOI 2.7.3** 编译，`PackageReference` 最低锁定 2.7.3（NuGet 会自动把低版本消费者抬到 2.7.3），**运行时兼容 2.7.3 ~ 2.8.0**（已对 2.8.0 做全特性实测验证）。
+- 若使用 **NPOI 2.8.0**：NPOI 自带 `AcceptNPOIOSMFLicense=true` 许可声明要求，需在项目 `csproj` 加 `<AcceptNPOIOSMFLicense>true</AcceptNPOIOSMFLicense>`（与库无关，是 NPOI 2.8.0 自身的构建要求）。
+
+#### 2.1.1 三种 NPOI 版本选择优劣对比
+
+| 版本 | 优点 | 缺点 | 结论 |
+| --- | --- | --- | --- |
+| **2.7.2**（原锁定） | 稳定成熟、无许可声明、net6.0 兼容好（netstandard2.1）、接口简单（`void SetCellValue`） | 接口旧；下游一旦用 2.7.3+ 直接抛 `MissingMethodException`（二进制不兼容）；缺少后续修复 | ❌ 不适合做类库底座 |
+| **2.7.3**（现用，推荐） | `SetCellValue` 流式签名与 2.8.0 一致；无许可要求；API 增量小、重编译零改动；运行时向上兼容 2.7.3~2.8.0（已实测） | 仍不是最新版；若未来 NPOI 2.9+ 再改 API 需再次升级 | ✅ 兼容面最大、下游摩擦最小的平衡点 |
+| **2.8.0**（最新） | 修复/特性最新、长期方向好 | 强制 `AcceptNPOIOSMFLicense=true`（下游每个项目都要加）；无 net6.0 直接目标（走 netstandard2.1 / net8.0）；XSSF 内部 API（`GetCTWorksheet` / `CT_SheetProtection` / `calcPr`）变动更多，重编译与回归风险更大 | ⚠️ 需接受许可声明 + 全面回归才可切换 |
+
+> **教训**：类库锁"太低"的 NPOI 会制造下游二进制不兼容；锁"太高"（2.8.0）会把许可声明和额外 API 变更强加给所有消费者。锁 2.7.3 作为最低兼容点，是在两者间的平衡。
 
 ---
 
@@ -75,7 +91,7 @@ MagicFrame.Excel/
 ├── Providers/             # 默认列提供器（特性发现 + 按类型缓存）
 ├── Readers/               # 读取策略（单/分组表头）+ 注册表 + 列对应校验 + 快路径写入
 ├── Writers/               # 写入策略（单/分组表头）+ 注册表 + 样式集合
-├── tests/MagicFrame.Excel.Tests/   # xUnit 测试（70 个用例）
+├── tests/MagicFrame.Excel.Tests/   # xUnit 测试（73 个用例）
 ├── demos/MagicFrame.Excel.Demo/     # 控制台演示
 ├── tools/MagicFrame.Excel.StressTest/  # 独立压力测试（5000×30 计时、公式对比）
 ├── docs/                  # 技术设计文档 + drawio 图表
@@ -359,7 +375,7 @@ IDictionary<string, IList<Employee>> all = engine.ImportAll<Employee>(bytes);
 | 逐行错误收集 | `ExcelImportOptions.CollectRowErrors` | 某行解析失败记录到 `Issues` 并跳过，不整批抛 |
 | 源行号回填 | `ExcelImportOptions.SourceRowProperty` | 把 Excel 行号写回实体属性 |
 | 进度回调 | `Progress`（导出/导入选项） | `IProgress<double>` 0~1 |
-| 样式扩展 | `RowHeight` / `AlternateRowFillColor` / `EnableBorders` | 行高 / 交替行色 / 边框 |
+| 样式扩展 | `RowHeight` / `AlternateRowFillColor` / `EnableBorders` | 行高 / 交替行色 / **整表边框**（默认无边框） |
 | 结构化问题 | `ExcelImportOptions.Issues` | `ImportIssue`（Severity/Code/Message/Row） |
 | 一键多 Sheet 导入 | `ExcelEngine.ImportAll<T>` | 返回 `Dictionary<sheetName, IList<T>>` |
 
@@ -558,6 +574,7 @@ var back = engine.ImportFile<MyRow>("out.xlsx",
 
 - `WriterStyles` 按 Workbook 在每次 `Write` 时创建，`ISheetWriter` 实现**不要**缓存任何 `ICellStyle`（NPOI 样式绑定所属 Workbook，跨簿复用会抛异常）。
 - `WriterStyles` 内部会按「锁定/日期/交替行/边框/数字格式」组合缓存数据样式（ConcurrentDictionary，仅限当前 Workbook 内复用），避免为每列/每行重复建样式；表头按颜色缓存。
+- **边框**：`ExcelExportOptions.EnableBorders = true` 时，表头与数据单元格都加细边框，形成整表网格；默认 `false`（无边框）。**分组表头/合并区域边框补完整**：Excel 合并区右边框取最右列单元格、下边框取最下行单元格的边框，库内自动为合并区域内其余单元格补样式（如 `A1:B1` 的 B1、`F1:F2` 的 F2），保证整表边框无缺口。边框随每个 Workbook 的样式集合创建，不跨簿复用。
 - 同理，自己写的写入策略若创建样式，请在方法内部基于传入的 `workbook` 创建。
 
 ### 7.3 扩展实现须保持无状态（可单例）
@@ -702,7 +719,7 @@ var back = engine.ImportFile<MyRow>("out.xlsx",
 # 还原 + 构建整个解决方案
 dotnet build MagicFrame.Excel.sln
 
-# 运行测试（70 个用例）
+# 运行测试（73 个用例）
 dotnet test MagicFrame.Excel.sln
 
 # 运行演示（输出到 bin/.../output/，可传第二个参数指定输出目录）

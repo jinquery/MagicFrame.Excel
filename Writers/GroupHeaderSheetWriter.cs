@@ -33,6 +33,12 @@ public class GroupHeaderSheetWriter : BaseSheetWriter
                 ICell cell = groupRow.GetCell(c) ?? groupRow.CreateCell(c);
                 cell.SetCellValue(col.Name);
                 cell.CellStyle = styles.HeaderStyleFor(workbook, col.HeaderColor);
+                if (options.EnableBorders)
+                {
+                    // 合并列底边：底行单元格补样式，保证整表边框完整（Excel 合并区下边框取底行单元格）
+                    ICell bottom = nameRow.GetCell(c) ?? nameRow.CreateCell(c);
+                    bottom.CellStyle = styles.HeaderStyleFor(workbook, col.HeaderColor);
+                }
                 ApplyColumn(sheet, c, col, options);
                 c++;
                 continue;
@@ -51,6 +57,15 @@ public class GroupHeaderSheetWriter : BaseSheetWriter
             ICell groupCell = groupRow.GetCell(start) ?? groupRow.CreateCell(start);
             groupCell.SetCellValue(columns[start].GroupText);
             groupCell.CellStyle = styles.HeaderStyleFor(workbook, columns[start].HeaderColor);
+            if (options.EnableBorders)
+            {
+                // 合并行右边：合并区域内其余单元格补样式，保证整表边框完整（Excel 合并区右边框取最右列单元格）
+                for (int j = start + 1; j <= end; j++)
+                {
+                    ICell inner = groupRow.GetCell(j) ?? groupRow.CreateCell(j);
+                    inner.CellStyle = styles.HeaderStyleFor(workbook, columns[start].HeaderColor);
+                }
+            }
 
             for (int j = start; j <= end; j++)
             {

@@ -33,8 +33,8 @@ public abstract class BaseSheetWriter : ISheetWriter
         if (sheet == null) throw new ArgumentNullException(nameof(sheet));
         if (columns == null) throw new ArgumentNullException(nameof(columns));
 
-        // 样式属于当前工作簿，每次写入重新创建（避免跨工作簿复用样式）
-        var styles = WriterStyles.Create(workbook);
+        // 样式属于当前工作簿，每次写入重新创建（避免跨工作簿复用样式）；边框作用于整表
+        var styles = WriterStyles.Create(workbook, options.EnableBorders);
 
         // 整列锁定铺底需在写入单元格之前执行（NPOI 的 SetDefaultColumnStyle 会覆盖已存在单元格样式）
         ApplyColumnDefaults(workbook, sheet, columns);

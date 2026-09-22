@@ -8,10 +8,14 @@ namespace MagicFrame.Excel.Writers;
 /// 单次写入使用的样式集合：每个 Workbook 独立创建，避免跨工作簿复用样式导致异常。
 /// 因此写入策略（ISheetWriter 实现）可安全地作为单例复用。
 /// 数据样式按 (锁定/日期/交替行/边框/数字格式) 组合缓存，避免为每列/每行重复建样式。
+/// <para>
+/// 边框（border=true）作用于整表：表头 + 数据单元格都加细边框，形成完整网格；默认不加。
+/// </para>
 /// </summary>
 public sealed class WriterStyles
 {
     private readonly IWorkbook _workbook;
+    private readonly bool _border;
     private readonly Dictionary<short, ICellStyle> _headersByColor = new();
     private readonly ICellStyle _cellStyle;
     private readonly ICellStyle _lockedStyle;
@@ -24,24 +28,27 @@ public sealed class WriterStyles
         ICellStyle cellStyle,
         ICellStyle lockedStyle,
         ICellStyle dateCellStyle,
-        ICellStyle dateLockedStyle)
+        ICellStyle dateLockedStyle,
+        bool border)
     {
         _workbook = workbook;
+        _border = border;
         _cellStyle = cellStyle;
         _lockedStyle = lockedStyle;
         _dateCellStyle = dateCellStyle;
         _dateLockedStyle = dateLockedStyle;
     }
 
-    /// <summary>为指定工作簿创建样式集合</summary>
-    public static WriterStyles Create(IWorkbook workbook)
+    /// <summary>为指定工作簿创建样式集合；border=true 时整表加细边框</summary>
+    public static WriterStyles Create(IWorkbook workbook, bool border = false)
     {
         return new WriterStyles(
             workbook,
-            cellStyle: CreateStyle(workbook, isLocked: false, wrapText: true),
-            lockedStyle: CreateStyle(workbook, isLocked: true, wrapText: true),
-            dateCellStyle: CreateDateStyle(workbook, isLocked: false),
-            dateLockedStyle: CreateDateStyle(workbook, isLocked: true));
+            cellStyle: CreateStyle(workbook, isLocked: false, wrapText: true, border),
+            lockedStyle: CreateStyle(workbook, isLocked: true, wrapText: true, border),
+            dateCellStyle: CreateDateStyle(workbook, isLocked: false, border),
+            dateLockedStyle: CreateDateStyle(workbook, isLocked: true, border),
+            border);
     }
 
     /// <summary>按表头颜色返回（缓存）对应的锁定表头样式</summary>
@@ -51,10 +58,13 @@ public sealed class WriterStyles
         {
             return style;
         }
-        var newStyle = CreateStyle(workbook, isLocked: true, wrapText: true);
-        var font = workbook.CreateFont();
-        font.Color = color;
-        newStyle.SetFont(font);
+        var newStyle = CreateStyle(workbook, isLocked: true, wrapText: true, _border);
+        if (color != 0)
+        {
+            var font = workbook.CreateFont();
+            font.Color = color;
+            newStyle.SetFont(font);
+        }
         _headersByColor[color] = newStyle;
         return newStyle;
     }
@@ -75,6 +85,7 @@ public sealed class WriterStyles
     /// </summary>
     public ICellStyle CellStyleFor(object? value, ExcelColumn column, bool alternateRow, short alternateFillColor, bool border)
     {
+        border = border || _border;
         bool hasExtra = alternateRow || border || !string.IsNullOrEmpty(column.NumberFormat);
         if (!hasExtra)
         {
@@ -110,31 +121,44 @@ public sealed class WriterStyles
         }
         if (border)
         {
-            style.BorderTop = BorderStyle.Thin;
-            style.BorderBottom = BorderStyle.Thin;
-            style.BorderLeft = BorderStyle.Thin;
-            style.BorderRight = BorderStyle.Thin;
+            ApplyBorders(style);
         }
         return style;
     }
 
-    private static ICellStyle CreateStyle(IWorkbook workbook, bool isLocked, bool wrapText)
+    private static ICellStyle CreateStyle(IWorkbook workbook, bool isLocked, bool wrapText, bool border)
     {
         var style = workbook.CreateCellStyle();
         style.Alignment = HorizontalAlignment.Center;
         style.VerticalAlignment = VerticalAlignment.Center;
         style.IsLocked = isLocked;
         style.WrapText = wrapText;
+        if (border)
+        {
+            ApplyBorders(style);
+        }
         return style;
     }
 
-    private static ICellStyle CreateDateStyle(IWorkbook workbook, bool isLocked)
+    private static ICellStyle CreateDateStyle(IWorkbook workbook, bool isLocked, bool border)
     {
         var style = workbook.CreateCellStyle();
         style.Alignment = HorizontalAlignment.Center;
         style.VerticalAlignment = VerticalAlignment.Center;
         style.IsLocked = isLocked;
         style.DataFormat = workbook.CreateDataFormat().GetFormat("yyyy-mm-dd");
+        if (border)
+        {
+            ApplyBorders(style);
+        }
         return style;
+    }
+
+    private static void ApplyBorders(ICellStyle style)
+    {
+        style.BorderTop = BorderStyle.Thin;
+        style.BorderBottom = BorderStyle.Thin;
+        style.BorderLeft = BorderStyle.Thin;
+        style.BorderRight = BorderStyle.Thin;
     }
 }

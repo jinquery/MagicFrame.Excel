@@ -40,7 +40,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="NPOI" Version="2.7.2" />
+    <!-- NPOI 2.7.3 起 ICell.SetCellValue 改为流式（返回 ICell），库按此 API 编译，运行时兼容 2.7.3+ -->
+    <PackageReference Include="NPOI" Version="2.7.3" />
   </ItemGroup>
 
 </Project>

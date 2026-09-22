@@ -236,12 +236,27 @@ public class FeatureTests
     }
 
     [Fact]
-    public void Borders_Are_Applied()
+    public void Borders_Are_Applied_To_Header_And_Data()
     {
         using var result = _engine.Export(Employees(), new ExcelExportOptions { SheetName = "员工表", EnableBorders = true });
+        var sheet = result.Workbook.GetSheetAt(0);
+
+        // 表头单元格有边框（整表网格）
+        var headerCell = sheet.GetRow(0).GetCell(0);
+        Assert.Equal(BorderStyle.Thin, headerCell.CellStyle.BorderTop);
+        Assert.Equal(BorderStyle.Thin, headerCell.CellStyle.BorderLeft);
+        // 数据单元格有边框
+        var dataCell = sheet.GetRow(1).GetCell(0);
+        Assert.Equal(BorderStyle.Thin, dataCell.CellStyle.BorderTop);
+        Assert.Equal(BorderStyle.Thin, dataCell.CellStyle.BorderLeft);
+    }
+
+    [Fact]
+    public void No_Borders_By_Default()
+    {
+        using var result = _engine.Export(Employees(), new ExcelExportOptions { SheetName = "员工表" });
         var cell = result.Workbook.GetSheetAt(0).GetRow(1).GetCell(0);
-        Assert.Equal(BorderStyle.Thin, cell.CellStyle.BorderTop);
-        Assert.Equal(BorderStyle.Thin, cell.CellStyle.BorderLeft);
+        Assert.Equal(BorderStyle.None, cell.CellStyle.BorderTop); // 默认无边框
     }
 
     [Fact]

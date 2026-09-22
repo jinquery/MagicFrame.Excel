@@ -94,4 +94,38 @@ public class GroupHeaderTests
         a.SetCellValue(textB);
         b.SetCellValue(textA);
     }
+
+    [Fact]
+    public void Merged_Region_Borders_Are_Complete_When_Borders_Enabled()
+    {
+        // 分组表头 + 整表边框：合并区域的外边缘边框必须完整
+        // 结构：基础信息=A1:B1（合并行），考核信息=C1:E1（合并行），评级=F1:F2（合并列）
+        var options = new ExcelExportOptions
+        {
+            SheetName = "考核表",
+            HeaderKind = HeaderKinds.Group,
+            EnableBorders = true,
+        };
+        using var result = _engine.Export(SampleAssessments(), options);
+        var sheet = result.Workbook.GetSheetAt(0);
+
+        // 合并行右边：基础信息 A1:B1 -> B1 应有右边框
+        Assert.Equal(BorderStyle.Thin, sheet.GetRow(0).GetCell(1).CellStyle.BorderRight);
+        // 合并行右边：考核信息 C1:E1 -> E1 应有右边框
+        Assert.Equal(BorderStyle.Thin, sheet.GetRow(0).GetCell(4).CellStyle.BorderRight);
+        // 合并列下边：评级 F1:F2 -> F2 应有下边框
+        Assert.Equal(BorderStyle.Thin, sheet.GetRow(1).GetCell(5).CellStyle.BorderBottom);
+        // 普通数据单元格边框不受影响
+        Assert.Equal(BorderStyle.Thin, sheet.GetRow(2).GetCell(0).CellStyle.BorderTop);
+    }
+
+    [Fact]
+    public void Default_Group_Header_No_Extra_Merged_Cells_When_Borders_Off()
+    {
+        // 默认（无边框）时不额外创建合并区域内单元格，保持原输出结构
+        using var result = _engine.Export(SampleAssessments(), GroupOptions());
+        var sheet = result.Workbook.GetSheetAt(0);
+        Assert.Null(sheet.GetRow(0).GetCell(1));       // 基础信息合并区 B1 不创建
+        Assert.Null(sheet.GetRow(1).GetCell(5));       // 评级合并区 F2 不创建
+    }
 }
