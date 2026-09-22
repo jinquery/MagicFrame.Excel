@@ -28,7 +28,7 @@
 | --- | --- |
 | 目标框架 | `net6.0` |
 | 语言版本 | `C# 10`（`ImplicitUsings`、`Nullable` 开启） |
-| 依赖 | `NPOI 2.7.2` |
+| 依赖 | `NPOI 2.7.3` |
 | 文件格式 | **仅 `.xlsx`（XSSF / OpenXML）**，引擎内部固定使用 `XSSFWorkbook` |
 | 测试 | `xUnit`（`tests/MagicFrame.Excel.Tests`，70 个用例） |
 | 演示 | `demos/MagicFrame.Excel.Demo`（控制台） |
